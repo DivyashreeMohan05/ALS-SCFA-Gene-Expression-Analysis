@@ -19,8 +19,9 @@ This project investigates whether disrupted short-chain fatty acid (SCFA) signal
 ---
 
 ## Datasets
-
+Datasets were downloaded from GEO
 GSE56500 | Spinal cord |  6 ALS (csALS + c9ALS) + 6 Control 
+
 GSE68605 | Motor cortex |  8 ALS + 3 Control 
 
 ---
