@@ -102,11 +102,14 @@ Activated: Complement and coagulation cascades, Cytokine signalling, PI3K-Akt si
 
 ## References
 
-1. The Links between ALS and NF-κB
+1. The Links between ALS and NF-κB 
+https://pmc.ncbi.nlm.nih.gov/articles/PMC8070122/
 2. Elevated NLRP3 Inflammasome Activation Is Associated with Motor Neuron Degeneration in ALS
-3. The Role of Short-Chain Fatty Acids in Microbiota–Gut–Brain Cross-Talk with a Focus on ALS
-4. The emerging role of microbiota derived SCFAs in neurodegenerative disorders
+https://pmc.ncbi.nlm.nih.gov/articles/PMC11202041/
+3. The Role of Short-Chain Fatty Acids in Microbiota–Gut–Brain Cross-Talk with a Focus on ALS https://pmc.ncbi.nlm.nih.gov/articles/PMC10606032/
+4. The emerging role of microbiota derived SCFAs in neurodegenerative disorders https://pmc.ncbi.nlm.nih.gov/articles/PMC12152874/
 5. Mechanisms of Blood–Brain Barrier Protection by Microbiota-Derived Short-Chain Fatty Acids
+https://pmc.ncbi.nlm.nih.gov/articles/PMC9954192/
 
 ---
 
