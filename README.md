@@ -47,7 +47,7 @@ GSE68605 | Motor cortex |  8 ALS + 3 Control
 
 ### SCFA Gene Dysregulation
 
-32 of 33 curated SCFA genes were detected in GSE56500 (spinal cord); 0 reached significance after BH correction, consistent with limited detection power in a small RNA-seq cohort. In GSE68605 (motor cortex), 30 of 33 SCFA genes were detected with 6 significantly dysregulated.
+32 of 33 curated SCFA genes were detected in GSE56500 (spinal cord); 0 reached significance after BH correction, consistent with limited detection power in a small RNA-seq cohort. In GSE68605 (motor cortex), 30 of 33 SCFA genes were detected, with 6 significantly dysregulated.
 
 Key findings from GSE68605:
 - **MYD88, CX3CR1, TREM2** upregulated → gut-brain neuroinflammation
@@ -77,7 +77,7 @@ Activated: Complement and coagulation cascades, Cytokine signalling, PI3K-Akt si
 
  Complement and coagulation cascade - Neuroinflammation — directly linked to SCFA suppression 
  Cytokine-cytokine receptor interaction - NF-κB/NLRP3 driven inflammatory signalling 
- PI3K-Akt signaling pathway - SCFA receptor (FFAR2/4) downstream signalling 
+ PI3K-Akt signalling pathway - SCFA receptor (FFAR2/4) downstream signalling 
  Parkinson disease - Shared neurodegeneration signature 
  Motor proteins - ALS motor neuron degeneration 
 > Suppressed mitochondrial function + activated neuroinflammation = fingerprint of SCFA disruption in ALS
@@ -110,10 +110,10 @@ https://pmc.ncbi.nlm.nih.gov/articles/PMC8070122/
 2. Elevated NLRP3 Inflammasome Activation Is Associated with Motor Neuron Degeneration in ALS
 https://pmc.ncbi.nlm.nih.gov/articles/PMC11202041/
 3. The Role of Short-Chain Fatty Acids in Microbiota–Gut–Brain Cross-Talk with a Focus on ALS https://pmc.ncbi.nlm.nih.gov/articles/PMC10606032/
-4. The emerging role of microbiota derived SCFAs in neurodegenerative disorders https://pmc.ncbi.nlm.nih.gov/articles/PMC12152874/
+4. The emerging role of microbiota-derived SCFAs in neurodegenerative disorders https://pmc.ncbi.nlm.nih.gov/articles/PMC12152874/
 5. Mechanisms of Blood–Brain Barrier Protection by Microbiota-Derived Short-Chain Fatty Acids
 https://pmc.ncbi.nlm.nih.gov/articles/PMC9954192/
 
 ---
 
-*Presented at HIPS Young Investigators Symposium, May 2026*
+*Presented at HIPS Symposium - Young Investigators Talk, May 2026*
