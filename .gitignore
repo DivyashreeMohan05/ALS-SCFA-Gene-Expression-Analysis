@@ -1,0 +1,8 @@
+# Large RData files
+*.RData
+# Large unfiltered DEG CSVs 
+*_all.csv
+.DS_Store
+.Rhistory
+.RData
+.Rproj.user
