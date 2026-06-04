@@ -5,6 +5,7 @@
 library(ggplot2)
 library(pheatmap)
 load("../DEG/ALS_DEG_final.RData")
+# loaded RData retained some residual probe-style rownames after DEG
 clean_rownames <- function(x) {
   if (grepl(" /// ", x)) {
     parts <- strsplit(x, " /// ")[[1]]
