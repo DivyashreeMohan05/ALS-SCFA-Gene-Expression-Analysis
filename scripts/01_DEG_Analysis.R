@@ -87,5 +87,5 @@ p <- ggplot(top_ALS, aes(x = logFC, y = -log10(P.Value), color = sig)) +
         legend.position = "top")
 ggsave("volcano_ALS_combined.png", plot = p,
        width = 8, height = 6, dpi = 300, bg = "white")
-#Saving the image
+#Saving the entire workspace 
 save.image("ALS_DEG_final.RData")
