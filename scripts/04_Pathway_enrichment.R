@@ -21,7 +21,7 @@ symbol_to_entrez <- function(ranked) {
   ranked <- ranked[!is.na(names(ranked))]
   ranked <- ranked[names(ranked) != ""]
   ranked <- ranked[!grepl("^[0-9]", names(ranked))]   # removes probe IDs starting with digits
-  ranked <- ranked[!grepl("\\.", names(ranked))]       
+  ranked <- ranked[!grepl("\\.", names(ranked))]  # removes names with ambiguous probes   
   ids <- bitr(names(ranked),
               fromType = "SYMBOL",
               toType   = "ENTREZID",
@@ -54,10 +54,10 @@ run_gsea <- function(ranked_entrez, label) {
     verbose = FALSE)
   if (nrow(as.data.frame(gsea_go)) > 0) {
     gsea_go@result <- gsea_go@result[!is.na(gsea_go@result$pvalue), ]}
-  {write.csv(
+  write.csv(
       as.data.frame(gsea_kegg),
       paste0("GSEA_KEGG_", label, ".csv"),
-      row.names = FALSE)}
+      row.names = FALSE)
   if (nrow(as.data.frame(gsea_go)) > 0) {
     write.csv(
       as.data.frame(gsea_go),
@@ -147,7 +147,7 @@ save_dotplot(
   gsea_68605$go,
   "GSEA GO BP — ALS vs Control (GSE68605)",
   "GSEA_GOBP_dotplot_GSE68605.png")
-#Cross datset comparison
+#Cross dataset comparison
 kegg_56500 <- as.data.frame(gsea_56500$kegg)
 kegg_68605 <- as.data.frame(gsea_68605$kegg)
 if (nrow(kegg_56500) > 0 & nrow(kegg_68605) > 0) {
