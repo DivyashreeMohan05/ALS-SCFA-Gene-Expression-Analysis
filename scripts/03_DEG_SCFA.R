@@ -91,7 +91,7 @@ saveRDS(list(expr_mat = expr_mat, pheno = pheno),
 
 #SCFA gene panel
 cat("SCFA genes in expression matrix:",sum(all_scfa %in% rownames(expr_mat)),"of", length(all_scfa),"\n")
-#Extract SCFA genes 
+#Extract SCFA genes
 scfa_df          <- top_68605[top_68605$GeneSymbol %in% all_scfa, ]
 scfa_df$Category <- gene_category[scfa_df$GeneSymbol]
 scfa_df$sig      <- ifelse(scfa_df$adj.P.Val < 0.05, "Significant", "NS")

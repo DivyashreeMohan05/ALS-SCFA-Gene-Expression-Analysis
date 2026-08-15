@@ -1,5 +1,4 @@
-#Significant pathway/term count per seed - shows why 04 reports a consensus
-#instead of a single-seed count. Reads 04's output, does not run GSEA.
+#Significant term count per seed - diagnostic for 04's consensus approach, reads 04's output only
 
 source(here::here("scripts", "_paths.R"))
 library(ggplot2)

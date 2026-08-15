@@ -1,7 +1,6 @@
 #Cross-tissue KEGG/GO BP overlap significance - GSE56500 (Spinal Cord) & GSE68605 (Motor Cortex)
 #Tests: hypergeometric on shared-term count | binomial on NES sign concordance
-#Uses 04's consensus tables (>=80% of 20 seeds significant), not a single seed -
-#single-seed GSEA counts aren't reproducible enough to test overlap on directly.
+#Uses 04's consensus tables (seed_fraction >= 0.8), not single-seed output
 
 source(here::here("scripts", "_paths.R"))
 

@@ -9,14 +9,12 @@ source(here::here("scripts", "_paths.R"))
 source(here::here("scripts", "_fetch_geo.R"))
 # Loading GEO dataset
 gse       <- getGEO("GSE56500", GSEMatrix = TRUE, destdir = DIR_RAW)[[1]]
-expr_mat  <- exprs(gse) #expression matrix of probes × samples 
+expr_mat  <- exprs(gse) #expression matrix of probes × samples
 pheno     <- pData(gse)
 fdata     <- fData(gse) #feature annotation
 #Creating a ALS/Control label
 pheno$ALS_status <- ifelse(pheno$`patient group:ch1` == "control", "Control", "ALS")
-#Probe to Gene symbol mapping - gene_assignment is /// separated transcript
-#blocks, each block is "accession // symbol"; a probe is only assigned a
-#symbol if every block agrees on exactly one distinct symbol
+#Probe to gene symbol mapping - /// separated, keep symbol only if unambiguous
 resolve_symbol <- function(symbols) {
   symbols <- unique(symbols[!is.na(symbols) & symbols != ""])
   if (length(symbols) == 1) return(symbols)
@@ -45,7 +43,7 @@ expr_mat   <- expr_mat[keep, ]
 fdata      <- fdata[keep, ]
 rownames(expr_mat) <- fdata$GeneSymbol
 cat("Probes:", length(iqr_vals), "-> Genes retained after collapse:", nrow(expr_mat), "\n")
-# Inspecting for non-standard names 
+# Inspecting for non-standard names
 suspicious <- grep("^[0-9]|\\.|^-", rownames(expr_mat), value = TRUE)
 if (length(suspicious) > 0) {
   cat("WARNING: Non-standard gene names detected:", length(suspicious), "\n")
@@ -61,7 +59,7 @@ fit2 <- eBayes(fit2, trend = TRUE)
 #Results table
 top_ALS <- topTable(fit2, coef = "ALS_vs_Control", adjust = "BH", number = Inf)
 top_ALS$GeneSymbol <- rownames(top_ALS)
-#significance threshold (Using BH-adjusted p-values to control fdr)
+#Significance threshold - BH-adjusted
 sig_ALS <- subset(top_ALS,adj.P.Val < 0.05 & abs(logFC) > 0.5)
 print(paste("Total significant DEGs:", nrow(sig_ALS)))
 #Saving results

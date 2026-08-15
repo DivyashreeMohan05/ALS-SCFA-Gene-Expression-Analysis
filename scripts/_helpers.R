@@ -1,5 +1,4 @@
-#Shared helpers - GSEA ranking/mapping functions require clusterProfiler
-#and org.Hs.eg.db already loaded by the caller; SCFA panel needs nothing
+#Shared helpers - ranking/mapping functions need clusterProfiler and org.Hs.eg.db loaded by caller
 
 #Creating a ranked gene list
 make_ranked_list <- function(df) {

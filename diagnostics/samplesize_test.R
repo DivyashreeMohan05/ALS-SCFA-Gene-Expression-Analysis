@@ -1,7 +1,6 @@
-#Diagnostic only - not part of the pipeline. See diagnostics/README.md.
-#Demonstrates that sampleSize (not nPerm/maxPerm) is the precision lever
-#for gseKEGG()/gseGO()'s default method="multilevel", and that it's
-#unreachable through their public API.
+#Diagnostic only - not part of the pipeline, see diagnostics/README.md
+#Shows sampleSize (not nPerm/maxPerm) is the precision lever for
+#gseKEGG()/gseGO()'s default method, unreachable through their public API
 
 source(here::here("scripts", "_paths.R"))
 library(clusterProfiler)
@@ -17,8 +16,7 @@ r0 <- gseKEGG(geneList = ranked_A, organism = "hsa", minGSSize = 15, maxGSSize =
 gene_sets <- r0@geneSets
 geneList  <- r0@geneList
 
-#enrichit:::gsea() called directly (diagnostic only - reaches an unexported
-#internal, never do this in the pipeline itself)
+#enrichit:::gsea() called directly - diagnostic only, unexported internal
 run_direct <- function(seed, sampleSize) {
   set.seed(seed)
   res <- enrichit:::gsea(geneList = geneList, gene_sets = gene_sets,

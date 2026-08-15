@@ -1,7 +1,7 @@
-#SCFA Gene Filtering – GSE56500 
-#curated SCFA-related genes from DEG 
+#SCFA Gene Filtering – GSE56500
+#curated SCFA-related genes from DEG
 
-# Load DEG results
+#Load DEG results
 library(ggplot2)
 library(pheatmap)
 source(here::here("scripts", "_paths.R"))

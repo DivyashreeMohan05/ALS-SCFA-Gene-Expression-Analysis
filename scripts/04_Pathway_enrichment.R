@@ -1,4 +1,3 @@
-
 # Gene Set Enrichment Analysis
 # ALS vs Control Transcriptomic Datasets- GSE56500 (Spinal Cord)& GSE68605 (Motor Cortex)
 ## Method: clusterProfiler GSEA, KEGG pathway enrichment, GO Biological Process enrichment, Ranking metric = logFC × -log10(P-value)
@@ -9,19 +8,11 @@ library(digest)
 source(here::here("scripts", "_paths.R"))
 source(here::here("scripts", "_helpers.R"))
 
-#seed=TRUE/nPermSimple are silently dropped by gseKEGG()/gseGO() (never
-#forwarded to enrichit::gsea_gson). A single set.seed() per script only
-#anchors the first permutation call, not each one - results depend on call
-#order/count. Fixed by seeding immediately before every individual call.
-#Even seeded, sampleSize (the actual multilevel-method precision knob) is
-#unreachable through the public API and stuck at its default (101), so a
-#single seed's result still isn't representative - hence consensus across
-#seeds below, kept as the primary result.
+#Consensus GSEA across seeds - gseKEGG/gseGO seeding is call-order dependent
 CONSENSUS_SEEDS <- c(42, 1, 7, 123, 2024, 5, 11, 17, 23, 29,
                       31, 37, 41, 43, 47, 53, 59, 61, 67, 71)
 
-#Set to TRUE, or run with FORCE_RERUN=true, to force the 20-seed sweep
-#even if cached consensus CSVs already match the current logic
+#FORCE_RERUN=true forces the seed sweep even if the cache matches
 FORCE_RERUN <- isTRUE(as.logical(Sys.getenv("FORCE_RERUN", "FALSE")))
 
 run_kegg_once <- function(ranked_entrez, seed) {
@@ -70,7 +61,7 @@ run_gsea <- function(ranked_entrez, label) {
   write.csv(go_cons[order(-go_cons$seed_fraction), ],
             file.path(DIR_TABLES, paste0("GSEA_consensus_GO_", label, ".csv")), row.names = FALSE)
 
-  #Supplementary: single-seed (first of CONSENSUS_SEEDS) output, same shape as before the consensus fix
+  #Supplementary: single-seed output (first of CONSENSUS_SEEDS)
   gsea_kegg <- kegg_runs[[1]]
   gsea_go   <- go_runs[[1]]
   if (nrow(as.data.frame(gsea_kegg)) > 0) {
@@ -90,9 +81,7 @@ run_gsea <- function(ranked_entrez, label) {
   return(list(kegg = gsea_kegg, go = gsea_go, kegg_consensus = kegg_cons, go_consensus = go_cons,
               stability = stability))}
 
-#Skip the sweep if the consensus CSVs already reflect the computation logic
-#above (CONSENSUS_SEEDS through run_gsea) - same principle as
-#seed_stability.R: compute once, plot cheaply
+#Skip sweep if cached consensus CSVs match current compute logic
 compute_hash <- digest::digest(paste(
   deparse(CONSENSUS_SEEDS), deparse(run_kegg_once), deparse(run_go_once),
   deparse(consensus_table), deparse(run_gsea), collapse = "\n"))
@@ -131,8 +120,7 @@ save_consensus_dotplot <- function(cons, title, filename, top_n = NULL) {
           axis.text.y   = element_text(size = 8))
   ggsave(file.path(DIR_FIGURES, filename), plot = p, width = 12, height = 8, dpi = 300, bg = "white")
   return(p)}
-#Null dotplot - closest terms to significance, none crossing 0.05, same
-#visual language as the SCFA panel null plot
+#Null dotplot - closest terms to significance, none cross 0.05
 save_null_dotplot <- function(cons, title, filename, top_n = 20) {
   top <- cons[order(cons$median_p.adjust), ][seq_len(min(top_n, nrow(cons))), ]
   top$Description <- factor(top$Description, levels = rev(top$Description[order(-top$median_p.adjust)]))

@@ -1,6 +1,4 @@
-#Fetch and verify cached GEO series matrices
-#Downloads each accession to DIR_RAW if absent; otherwise verifies the cached
-#file's MD5 against the recorded checksum and aborts on mismatch.
+#Fetch cached GEO series matrices, verify MD5 checksum, abort on mismatch
 
 library(GEOquery)
 
