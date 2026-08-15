@@ -8,6 +8,7 @@ library(ggplot2)
 library(pheatmap)
 source(here::here("scripts", "_paths.R"))
 source(here::here("scripts", "_fetch_geo.R"))
+source(here::here("scripts", "_helpers.R"))
 #Loading GEO dataset
 gse      <- getGEO("GSE68605", GSEMatrix = TRUE, destdir = DIR_RAW)[[1]]
 expr_mat <- exprs(gse)
@@ -80,22 +81,11 @@ p_volcano <- ggplot(top_68605, aes(x = logFC, y = -log10(P.Value), color = sig))
         legend.position = "top")
 ggsave(file.path(DIR_FIGURES, "volcano_GSE68605.png"), plot = p_volcano,
        width = 8, height = 6, dpi = 300, bg = "white")
+#Saving objects needed by 06_cross_tissue_concordance.R
+saveRDS(list(expr_mat = expr_mat, pheno = pheno),
+        file.path(DIR_INTERIM, "GSE68605_DEG_final.rds"))
 
 #SCFA gene panel
-scfa_genes <- list(
-  "FFA Receptors"       = c("FFAR2", "FFAR3", "FFAR4", "GPR109A"),
-  "Transporters"        = c("SLC5A8", "SLC16A1", "SLC16A3"),
-  "Butyrate Metabolism" = c("ACSS2", "ACAT1", "HADHA", "HADHB"),
-  "HDAC Targets"        = c("HDAC1", "HDAC2", "HDAC3", "HDAC4",
-                            "HDAC5", "HDAC6", "HDAC7", "HDAC8",
-                            "SIRT1", "SIRT3"),
-  "NF-kB"               = c("NFKB1", "RELA", "IKBKB", "NFKBIA"),
-  "NLRP3"               = c("NLRP3", "CASP1", "IL1B", "IL18"),
-  "Gut-Brain"           = c("TLR4", "MYD88", "TREM2", "CX3CR1")
-)
-all_scfa      <- unlist(scfa_genes, use.names = FALSE)
-gene_category <- rep(names(scfa_genes), lengths(scfa_genes))
-names(gene_category) <- all_scfa
 cat("SCFA genes in expression matrix:",sum(all_scfa %in% rownames(expr_mat)),"of", length(all_scfa),"\n")
 #Extract SCFA genes 
 scfa_df          <- top_68605[top_68605$GeneSymbol %in% all_scfa, ]

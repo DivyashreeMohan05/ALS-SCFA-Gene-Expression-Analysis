@@ -5,6 +5,7 @@
 library(ggplot2)
 library(pheatmap)
 source(here::here("scripts", "_paths.R"))
+source(here::here("scripts", "_helpers.R"))
 list2env(readRDS(file.path(DIR_INTERIM, "ALS_DEG_final.rds")), environment())
 required_objects <- c("top_ALS", "expr_mat", "pheno")
 missing_objects <- required_objects[!sapply(required_objects, exists)]
@@ -13,21 +14,6 @@ if (length(missing_objects) > 0) {
     paste("Missing objects in RData:",
           paste(missing_objects, collapse = ", ")))
 }
-# Define curated SCFA gene list by functions
-scfa_genes <- list(
-  "FFA Receptors"       = c("FFAR2", "FFAR3", "FFAR4", "GPR109A"),
-  "Transporters"        = c("SLC5A8", "SLC16A1", "SLC16A3"),
-  "Butyrate Metabolism" = c("ACSS2", "ACAT1", "HADHA", "HADHB"),
-  "HDAC Targets"        = c("HDAC1", "HDAC2", "HDAC3", "HDAC4",
-                            "HDAC5", "HDAC6", "HDAC7", "HDAC8",
-                            "SIRT1", "SIRT3"),
-  "NF-kB"               = c("NFKB1", "RELA", "IKBKB", "NFKBIA"),
-  "NLRP3"               = c("NLRP3", "CASP1", "IL1B", "IL18"),
-  "Gut-Brain"           = c("TLR4", "MYD88", "TREM2", "CX3CR1")
-)
-all_scfa      <- unlist(scfa_genes, use.names = FALSE)
-gene_category <- rep(names(scfa_genes), lengths(scfa_genes))
-names(gene_category) <- all_scfa
 #Filtering DEG table for SCFA genes
 scfa_df          <- top_ALS[top_ALS$GeneSymbol %in% all_scfa, ]
 scfa_df$Category <- gene_category[scfa_df$GeneSymbol]

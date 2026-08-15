@@ -1,5 +1,5 @@
-#Shared GSEA helper functions - sourced by 04 and 05, requires
-#clusterProfiler and org.Hs.eg.db already loaded by the caller
+#Shared helpers - GSEA ranking/mapping functions require clusterProfiler
+#and org.Hs.eg.db already loaded by the caller; SCFA panel needs nothing
 
 #Creating a ranked gene list
 make_ranked_list <- function(df) {
@@ -25,3 +25,19 @@ symbol_to_entrez <- function(ranked) {
   ranked <- ranked[names(ranked) %in% ids$SYMBOL]
   names(ranked) <- ids$ENTREZID[match(names(ranked), ids$SYMBOL)]
   sort(ranked, decreasing = TRUE)}
+
+#SCFA gene panel
+scfa_genes <- list(
+  "FFA Receptors"       = c("FFAR2", "FFAR3", "FFAR4", "GPR109A"),
+  "Transporters"        = c("SLC5A8", "SLC16A1", "SLC16A3"),
+  "Butyrate Metabolism" = c("ACSS2", "ACAT1", "HADHA", "HADHB"),
+  "HDAC Targets"        = c("HDAC1", "HDAC2", "HDAC3", "HDAC4",
+                            "HDAC5", "HDAC6", "HDAC7", "HDAC8",
+                            "SIRT1", "SIRT3"),
+  "NF-kB"               = c("NFKB1", "RELA", "IKBKB", "NFKBIA"),
+  "NLRP3"               = c("NLRP3", "CASP1", "IL1B", "IL18"),
+  "Gut-Brain"           = c("TLR4", "MYD88", "TREM2", "CX3CR1")
+)
+all_scfa      <- unlist(scfa_genes, use.names = FALSE)
+gene_category <- rep(names(scfa_genes), lengths(scfa_genes))
+names(gene_category) <- all_scfa

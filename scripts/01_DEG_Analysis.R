@@ -1,4 +1,4 @@
-# DEG Analysis – GSE56500 (Spinal Cord, RNA-seq)
+# DEG Analysis – GSE56500 (Spinal Cord, GPL5188 Affymetrix Human Exon 1.0 ST)
 #ALS subtypes: csALS + c9ALS combined vs Control
 #Methods used: limma | Threshold: adj.P.Val < 0.05, |logFC| > 0.5
 library(GEOquery)
