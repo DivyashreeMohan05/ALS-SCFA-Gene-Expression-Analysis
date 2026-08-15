@@ -5,8 +5,9 @@ library(GEOquery)
 library(limma)
 library(ggplot2)
 source(here::here("scripts", "_paths.R"))
+source(here::here("scripts", "_fetch_geo.R"))
 # Loading GEO dataset
-gse       <- getGEO("GSE56500", GSEMatrix = TRUE)[[1]]
+gse       <- getGEO("GSE56500", GSEMatrix = TRUE, destdir = DIR_RAW)[[1]]
 expr_mat  <- exprs(gse) #expression matrix of probes × samples 
 pheno     <- pData(gse)
 fdata     <- fData(gse) #feature annotation

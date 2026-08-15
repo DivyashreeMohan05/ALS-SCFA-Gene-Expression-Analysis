@@ -7,8 +7,9 @@ library(limma)
 library(ggplot2)
 library(pheatmap)
 source(here::here("scripts", "_paths.R"))
+source(here::here("scripts", "_fetch_geo.R"))
 #Loading GEO dataset
-gse      <- getGEO("GSE68605", GSEMatrix = TRUE)[[1]]
+gse      <- getGEO("GSE68605", GSEMatrix = TRUE, destdir = DIR_RAW)[[1]]
 expr_mat <- exprs(gse)
 pheno    <- pData(gse)
 fdata    <- fData(gse)
