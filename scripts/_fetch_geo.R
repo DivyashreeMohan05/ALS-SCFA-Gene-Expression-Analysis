@@ -20,10 +20,12 @@ fetch_geo_cached <- function(acc) {
     md5    <- unname(tools::md5sum(existing[1]))
     record <- data.frame(file = basename(existing[1]), md5 = md5,
                           downloaded = format(Sys.Date()), stringsAsFactors = FALSE)
-    write.table(record, CHECKSUM_FILE,
-                append     = file.exists(CHECKSUM_FILE),
-                col.names  = !file.exists(CHECKSUM_FILE),
-                row.names  = FALSE, sep = "\t", quote = FALSE)
+    if (file.exists(CHECKSUM_FILE)) {
+      recorded <- read.table(CHECKSUM_FILE, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+      recorded <- recorded[recorded$file != basename(existing[1]), ]
+      record   <- rbind(recorded, record)
+    }
+    write.table(record, CHECKSUM_FILE, row.names = FALSE, sep = "\t", quote = FALSE)
     message(basename(existing[1]), " downloaded and checksummed.")
   } else {
     if (!file.exists(CHECKSUM_FILE)) {
