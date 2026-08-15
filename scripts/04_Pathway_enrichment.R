@@ -7,6 +7,7 @@ library(org.Hs.eg.db)
 library(ggplot2)
 library(enrichplot)
 source(here::here("scripts", "_paths.R"))
+set.seed(42)
 #Creating a ranked gene list
 make_ranked_list <- function(df) {
   df <- df[!is.na(df$GeneSymbol) & !is.na(df$logFC) & !is.na(df$P.Value), ]
@@ -40,6 +41,7 @@ run_gsea <- function(ranked_entrez, label) {
     maxGSSize = 500,
     pvalueCutoff = 0.05,
     nPermSimple  = 10000,
+    seed = TRUE,
     verbose = FALSE)
   if (nrow(as.data.frame(gsea_kegg)) > 0) {
     gsea_kegg@result <- gsea_kegg@result[!is.na(gsea_kegg@result$pvalue), ]}
@@ -52,6 +54,7 @@ run_gsea <- function(ranked_entrez, label) {
     maxGSSize = 500,
     pvalueCutoff = 0.05,
     nPermSimple  = 10000,
+    seed = TRUE,
     verbose = FALSE)
   if (nrow(as.data.frame(gsea_go)) > 0) {
     gsea_go@result <- gsea_go@result[!is.na(gsea_go@result$pvalue), ]}
