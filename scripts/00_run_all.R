@@ -9,6 +9,7 @@ scripts <- c(
   "02_SCFA_Analysis.R",
   "03_DEG_SCFA.R",
   "04_Pathway_enrichment.R",
+  "seed_stability.R",
   "05_overlap_significance.R",
   "06_cross_tissue_concordance.R")
 

@@ -57,6 +57,9 @@ run_gsea <- function(ranked_entrez, label) {
   go_cons   <- consensus_table(go_runs)
   kegg_counts <- sapply(kegg_runs, function(r) sum(as.data.frame(r)$p.adjust < 0.05, na.rm = TRUE))
   go_counts   <- sapply(go_runs,   function(r) sum(as.data.frame(r)$p.adjust < 0.05, na.rm = TRUE))
+  stability <- rbind(
+    data.frame(seed = CONSENSUS_SEEDS, dataset = label, database = "KEGG", n_significant = kegg_counts),
+    data.frame(seed = CONSENSUS_SEEDS, dataset = label, database = "GO_BP", n_significant = go_counts))
 
   write.csv(kegg_cons[order(-kegg_cons$seed_fraction), ],
             file.path(DIR_TABLES, paste0("GSEA_consensus_KEGG_", label, ".csv")), row.names = FALSE)
@@ -80,7 +83,8 @@ run_gsea <- function(ranked_entrez, label) {
   cat("GO BP: count range", min(go_counts), "-", max(go_counts),
       "| consensus (>=80% of seeds):", sum(go_cons$seed_fraction >= 0.8), "\n")
 
-  return(list(kegg = gsea_kegg, go = gsea_go, kegg_consensus = kegg_cons, go_consensus = go_cons))}
+  return(list(kegg = gsea_kegg, go = gsea_go, kegg_consensus = kegg_cons, go_consensus = go_cons,
+              stability = stability))}
 #Generate and save GSEA dotplots (from the supplementary single-seed result)
 save_dotplot <- function(gsea_obj, title, filename, n = 15) {
   if (nrow(as.data.frame(gsea_obj)) == 0) {
@@ -143,4 +147,9 @@ if (length(shared_kegg) > 0) {
 write.csv(
   data.frame(Pathway = shared_kegg),
   file.path(DIR_TABLES, "GSEA_shared_KEGG_pathways.csv"),
+  row.names = FALSE)
+#Per-seed significant counts, for seed_stability.R
+write.csv(
+  rbind(gsea_56500$stability, gsea_68605$stability),
+  file.path(DIR_TABLES, "seed_stability_counts.csv"),
   row.names = FALSE)
