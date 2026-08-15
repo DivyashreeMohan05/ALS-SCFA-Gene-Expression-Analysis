@@ -1,6 +1,6 @@
 "metric","value"
 "universe_N","347"
-"sig_GSE56500","28"
+"sig_GSE56500","27"
 "sig_GSE68605","0"
 "shared","0"
 "expected_by_chance","0"
@@ -9,11 +9,11 @@
 "null_agreement_prob",NA
 "binomial_p",NA
 "GO_universe_N","4696"
-"GO_sig_GSE56500","189"
-"GO_sig_GSE68605","8"
+"GO_sig_GSE56500","190"
+"GO_sig_GSE68605","5"
 "GO_shared","0"
-"GO_expected_by_chance","0.32"
+"GO_expected_by_chance","0.202"
 "GO_hypergeometric_p","1"
 "GO_sign_agreement","0/0"
-"GO_null_agreement_prob","0.6931"
+"GO_null_agreement_prob","0.6842"
 "GO_binomial_p",NA
