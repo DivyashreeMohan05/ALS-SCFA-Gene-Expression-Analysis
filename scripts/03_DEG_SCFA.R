@@ -5,9 +5,13 @@
 library(GEOquery)
 library(limma)
 library(ggplot2)
+library(ggrepel)
 library(pheatmap)
+source(here::here("scripts", "_paths.R"))
+source(here::here("scripts", "_fetch_geo.R"))
+source(here::here("scripts", "_helpers.R"))
 #Loading GEO dataset
-gse      <- getGEO("GSE68605", GSEMatrix = TRUE)[[1]]
+gse      <- getGEO("GSE68605", GSEMatrix = TRUE, destdir = DIR_RAW)[[1]]
 expr_mat <- exprs(gse)
 pheno    <- pData(gse)
 fdata    <- fData(gse)
@@ -19,19 +23,28 @@ pheno$ALS_status <- ifelse(
   "Control",
   "ALS")
 table(pheno$ALS_status)
-#Probe annotation
-fdata$GeneSymbol <- trimws(as.character(fdata$`Gene Symbol`))
-fdata$GeneSymbol[fdata$GeneSymbol == "" | fdata$GeneSymbol == "---"] <- NA
+#Probe annotation - Gene Symbol is /// separated for probesets that map to
+#more than one gene; only assign a symbol when exactly one is named
+resolve_symbol <- function(symbols) {
+  symbols <- unique(symbols[!is.na(symbols) & symbols != ""])
+  if (length(symbols) == 1) return(symbols)
+  NA
+}
+fdata$GeneSymbol <- sapply(as.character(fdata$`Gene Symbol`), function(x) {
+  if (is.na(x) || x == "") return(NA)
+  resolve_symbol(trimws(strsplit(x, " /// ")[[1]]))
+})
 valid    <- !is.na(fdata$GeneSymbol)
 expr_mat <- expr_mat[valid, ]
 fdata    <- fdata[valid, ]
-iqr_order          <- order(apply(expr_mat, 1, IQR), decreasing = TRUE)
-expr_mat           <- expr_mat[iqr_order, ]
-fdata              <- fdata[iqr_order, ]
-keep               <- !duplicated(fdata$GeneSymbol)
+iqr_vals           <- apply(expr_mat, 1, IQR)
+probe_id           <- rownames(fdata)
+keep               <- tapply(seq_along(iqr_vals), fdata$GeneSymbol,
+                              function(i) i[order(-iqr_vals[i], probe_id[i])[1]])
 expr_mat           <- expr_mat[keep, ]
-rownames(expr_mat) <- fdata$GeneSymbol[keep]
-cat("Genes retained after probe collapse:", nrow(expr_mat), "\n")
+fdata              <- fdata[keep, ]
+rownames(expr_mat) <- fdata$GeneSymbol
+cat("Probes:", length(iqr_vals), "-> Genes retained after collapse:", nrow(expr_mat), "\n")
 #DEG using limma
 group            <- factor(pheno$ALS_status, levels = c("Control", "ALS"))
 design           <- model.matrix(~0 + group)
@@ -45,55 +58,48 @@ top_68605            <- topTable(fit2, coef = "ALS_vs_Control",
 top_68605$GeneSymbol <- rownames(top_68605)
 sig_68605 <- subset(top_68605, adj.P.Val< 0.05 & abs(logFC) > 0.5)
 print(paste("GSE68605 significant DEGs:", nrow(sig_68605)))
-write.csv(top_68605, "GSE68605_ALS_vs_Control_all.csv",         row.names = FALSE)
-write.csv(sig_68605, "GSE68605_ALS_vs_Control_significant.csv", row.names = FALSE)
+write.csv(top_68605, file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_all.csv"),         row.names = FALSE)
+write.csv(sig_68605, file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_significant.csv"), row.names = FALSE)
 #Volcano plot
 top_68605$sig <- ifelse(top_68605$adj.P.Val < 0.05 & abs(top_68605$logFC) > 0.5,
                         "Significant", "NS")
-p_volcano <- ggplot(top_68605, aes(x = logFC, y = -log10(P.Value), color = sig)) +
+top10_68605 <- top_68605[order(top_68605$adj.P.Val), ][1:10, ]
+p_volcano <- ggplot(top_68605, aes(x = logFC, y = -log10(adj.P.Val), color = sig)) +
   geom_point(alpha = 0.6, size = 1.8) +
+  geom_text_repel(data = top10_68605, aes(label = GeneSymbol), color = "black",
+                   size = 3, max.overlaps = Inf) +
   scale_color_manual(values = c("NS" = "grey70", "Significant" = "red"), name = "") +
   geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed",
              color = "blue", alpha = 0.5) +
   geom_hline(yintercept = -log10(0.05), linetype = "dashed",
              color = "blue", alpha = 0.5) +
-  annotate("text", x = Inf, y = Inf,
+  annotate("text", x = Inf, y = -Inf,
            label = paste("Significant n =", sum(top_68605$sig == "Significant")),
-           hjust = 1.1, vjust = 1.5, size = 4.5, color = "red") +
+           hjust = 1.1, vjust = -1, size = 4.5, color = "red") +
   labs(title    = "ALS vs Control (GSE68605)",
        subtitle = "Affymetrix HG-U133 Plus 2.0",
-       x = "Log2 Fold Change", y = "-log10(P-value)") +
+       x = "Log2 Fold Change", y = "-log10(adj.P.Val)") +
   theme_bw(base_size = 13) +
   theme(plot.title      = element_text(hjust = 0.5, face = "bold"),
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "top")
-ggsave("volcano_GSE68605.png", plot = p_volcano,
+set.seed(42)
+ggsave(file.path(DIR_FIGURES, "volcano_GSE68605.png"), plot = p_volcano,
        width = 8, height = 6, dpi = 300, bg = "white")
+#Saving objects needed by 06_cross_tissue_concordance.R
+saveRDS(list(expr_mat = expr_mat, pheno = pheno),
+        file.path(DIR_INTERIM, "GSE68605_DEG_final.rds"))
 
 #SCFA gene panel
-scfa_genes <- list(
-  "FFA Receptors"       = c("FFAR2", "FFAR3", "FFAR4", "GPR109A"),
-  "Transporters"        = c("SLC5A8", "SLC16A1", "SLC16A3"),
-  "Butyrate Metabolism" = c("ACSS2", "ACAT1", "HADHA", "HADHB"),
-  "HDAC Targets"        = c("HDAC1", "HDAC2", "HDAC3", "HDAC4",
-                            "HDAC5", "HDAC6", "HDAC7", "HDAC8",
-                            "SIRT1", "SIRT3"),
-  "NF-kB"               = c("NFKB1", "RELA", "IKBKB", "NFKBIA"),
-  "NLRP3"               = c("NLRP3", "CASP1", "IL1B", "IL18"),
-  "Gut-Brain"           = c("TLR4", "MYD88", "TREM2", "CX3CR1")
-)
-all_scfa      <- unlist(scfa_genes, use.names = FALSE)
-gene_category <- rep(names(scfa_genes), lengths(scfa_genes))
-names(gene_category) <- all_scfa
 cat("SCFA genes in expression matrix:",sum(all_scfa %in% rownames(expr_mat)),"of", length(all_scfa),"\n")
-#Extract SCFA genes 
+#Extract SCFA genes
 scfa_df          <- top_68605[top_68605$GeneSymbol %in% all_scfa, ]
 scfa_df$Category <- gene_category[scfa_df$GeneSymbol]
 scfa_df$sig      <- ifelse(scfa_df$adj.P.Val < 0.05, "Significant", "NS")
 scfa_df          <- scfa_df[order(scfa_df$Category, scfa_df$P.Value), ]
 cat("SCFA genes found in GSE68605:", nrow(scfa_df), "of", length(all_scfa), "\n")
 print(scfa_df[, c("GeneSymbol", "Category", "logFC", "P.Value", "adj.P.Val", "sig")])
-write.csv(scfa_df, "GSE68605_SCFA_results.csv", row.names = FALSE)
+write.csv(scfa_df, file.path(DIR_TABLES, "GSE68605_SCFA_results.csv"), row.names = FALSE)
 #SCFA-focused volcano plot
 category_colors <- c(
   "FFA Receptors"       = "#E63946",
@@ -131,7 +137,7 @@ p_scfa_volcano <- ggplot() +
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "right",
         legend.text     = element_text(size = 9))
-ggsave("volcano_SCFA_GSE68605.png", plot = p_scfa_volcano,
+ggsave(file.path(DIR_FIGURES, "volcano_SCFA_GSE68605.png"), plot = p_scfa_volcano,
        width = 10, height = 6, dpi = 300, bg = "white")
 #heatmap
 found_genes <- rownames(expr_mat)[rownames(expr_mat) %in% all_scfa]
@@ -165,11 +171,38 @@ pheatmap(
   fontsize_row      = 9,
   color             = colorRampPalette(c("#457B9D", "white", "#E63946"))(100),
   main              = "SCFA Gene Expression: ALS vs Control (GSE68605)",
-  filename          = "heatmap_SCFA_GSE68605.png",
+  filename          = file.path(DIR_FIGURES, "heatmap_SCFA_GSE68605.png"),
   width             = 10, height = 8
 )
+#SCFA panel null plot - both datasets, nothing crosses adj.P.Val = 0.05
+scfa_56500 <- read.csv(file.path(DIR_TABLES, "SCFA_DEG_results.csv"))
+panel_null <- rbind(
+  data.frame(Gene = all_scfa, dataset = "GSE56500",
+             adj.P.Val = scfa_56500$adj.P.Val[match(all_scfa, scfa_56500$GeneSymbol)]),
+  data.frame(Gene = all_scfa, dataset = "GSE68605",
+             adj.P.Val = scfa_df$adj.P.Val[match(all_scfa, scfa_df$GeneSymbol)]))
+panel_null$detected <- !is.na(panel_null$adj.P.Val)
+panel_null$x_pos    <- ifelse(panel_null$detected, panel_null$adj.P.Val, 1.05)
+gene_order <- all_scfa[order(gene_category[all_scfa])]
+panel_null$Gene <- factor(panel_null$Gene, levels = rev(gene_order))
+p_scfa_null <- ggplot(panel_null, aes(x = x_pos, y = Gene)) +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red") +
+  geom_point(aes(color = detected, shape = detected), size = 2.5) +
+  scale_color_manual(values = c("TRUE" = "steelblue", "FALSE" = "grey60"), guide = "none") +
+  scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 4), guide = "none") +
+  scale_x_continuous(limits = c(0, 1.12), breaks = c(0, 0.25, 0.5, 0.75, 1, 1.05),
+                      labels = c("0", "0.25", "0.5", "0.75", "1", "not on\nplatform")) +
+  facet_wrap(~ dataset) +
+  labs(title    = "SCFA panel: adjusted significance, both datasets",
+       subtitle = "None of the 33 curated genes cross adj.P.Val = 0.05 in either dataset",
+       x = "adj.P.Val", y = NULL) +
+  theme_bw(base_size = 13) +
+  theme(plot.title    = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "grey40"))
+ggsave(file.path(DIR_FIGURES, "SCFA_panel_null.png"), plot = p_scfa_null,
+       width = 9, height = 9, dpi = 300, bg = "white")
 #Comparing GSE68605 with GSE56500 to look for overlap
-sig_56500 <- read.csv("../DEG/ALS_vs_Control_significant.csv")
+sig_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_significant.csv"))
 overlap_genes <- intersect(sig_68605$GeneSymbol, sig_56500$GeneSymbol)
 cat("\nOverlapping DEGs (GSE56500 ∩ GSE68605):", length(overlap_genes), "\n")
 overlap_df <- sig_68605[sig_68605$GeneSymbol %in% overlap_genes,
@@ -179,10 +212,9 @@ overlap_56500 <- sig_56500[sig_56500$GeneSymbol %in% overlap_genes,
                            c("GeneSymbol", "logFC", "P.Value")]
 overlap_final <- merge(overlap_df, overlap_56500, by = "GeneSymbol")
 overlap_final <- overlap_final[order(overlap_final$P.Value_68605), ]
-write.csv(overlap_final, "DEG_overlap_GSE56500_GSE68605.csv", row.names = FALSE)
+write.csv(overlap_final, file.path(DIR_TABLES, "DEG_overlap_GSE56500_GSE68605.csv"), row.names = FALSE)
 print(head(overlap_final, 20))
 #Identifies SCFA-related genes within DEG overlap
 scfa_overlap <- overlap_genes[overlap_genes %in% all_scfa]
 cat("SCFA genes in overlap:", length(scfa_overlap), "\n")
 if (length(scfa_overlap) > 0) print(scfa_overlap)
-save.image("GSE68605_analysis.RData")

@@ -1,33 +1,12 @@
-#SCFA Gene Filtering – GSE56500 
-#curated SCFA-related genes from DEG 
+#SCFA Gene Filtering – GSE56500
+#curated SCFA-related genes from DEG
 
-# Load DEG results
+#Load DEG results
 library(ggplot2)
 library(pheatmap)
-load("../DEG/ALS_DEG_final.RData")
-# loaded RData retained some residual probe-style rownames after DEG
-clean_rownames <- function(x) {
-  if (grepl(" /// ", x)) {
-    parts <- strsplit(x, " /// ")[[1]]
-  } else if (grepl(" // ", x)) {
-    parts <- strsplit(x, " // ")[[1]]
-  } else {
-    return(x)
-  }
-  for (i in 2:length(parts)) {
-    gene <- trimws(parts[i])
-    if (!is.na(gene) && gene != "" && gene != "---" &&
-        !grepl("^[0-9]", gene) && !grepl("^NM_|^NR_|^XM_|^ENST|^uc", gene)) {
-      return(gene)
-    }}
-  return(trimws(parts[length(parts)]))}
-rownames(expr_mat) <- sapply(rownames(expr_mat), clean_rownames)
-top_ALS$GeneSymbol <- sapply(top_ALS$GeneSymbol, clean_rownames)
-iqr_vals        <- apply(expr_mat, 1, IQR)
-expr_mat        <- expr_mat[order(iqr_vals, decreasing = TRUE), ]
-expr_mat        <- expr_mat[!duplicated(rownames(expr_mat)), ]
-top_ALS  <- top_ALS[order(top_ALS$P.Value), ]
-top_ALS  <- top_ALS[!duplicated(top_ALS$GeneSymbol), ]
+source(here::here("scripts", "_paths.R"))
+source(here::here("scripts", "_helpers.R"))
+list2env(readRDS(file.path(DIR_INTERIM, "ALS_DEG_final.rds")), environment())
 required_objects <- c("top_ALS", "expr_mat", "pheno")
 missing_objects <- required_objects[!sapply(required_objects, exists)]
 if (length(missing_objects) > 0) {
@@ -35,21 +14,6 @@ if (length(missing_objects) > 0) {
     paste("Missing objects in RData:",
           paste(missing_objects, collapse = ", ")))
 }
-# Define curated SCFA gene list by functions
-scfa_genes <- list(
-  "FFA Receptors"       = c("FFAR2", "FFAR3", "FFAR4", "GPR109A"),
-  "Transporters"        = c("SLC5A8", "SLC16A1", "SLC16A3"),
-  "Butyrate Metabolism" = c("ACSS2", "ACAT1", "HADHA", "HADHB"),
-  "HDAC Targets"        = c("HDAC1", "HDAC2", "HDAC3", "HDAC4",
-                            "HDAC5", "HDAC6", "HDAC7", "HDAC8",
-                            "SIRT1", "SIRT3"),
-  "NF-kB"               = c("NFKB1", "RELA", "IKBKB", "NFKBIA"),
-  "NLRP3"               = c("NLRP3", "CASP1", "IL1B", "IL18"),
-  "Gut-Brain"           = c("TLR4", "MYD88", "TREM2", "CX3CR1")
-)
-all_scfa      <- unlist(scfa_genes, use.names = FALSE)
-gene_category <- rep(names(scfa_genes), lengths(scfa_genes))
-names(gene_category) <- all_scfa
 #Filtering DEG table for SCFA genes
 scfa_df          <- top_ALS[top_ALS$GeneSymbol %in% all_scfa, ]
 scfa_df$Category <- gene_category[scfa_df$GeneSymbol]
@@ -60,7 +24,7 @@ cat(
   "Significant SCFA genes:",
   sum(scfa_df$adj.P.Val < 0.05),"\n")
 print(scfa_df[, c("GeneSymbol", "Category", "logFC", "P.Value", "adj.P.Val", "sig")])
-write.csv(scfa_df, "SCFA_DEG_results.csv", row.names = FALSE)
+write.csv(scfa_df, file.path(DIR_TABLES, "SCFA_DEG_results.csv"), row.names = FALSE)
 category_colors <- c(
   "FFA Receptors"       = "#E63946",
   "Transporters"        = "#F4A261",
@@ -98,7 +62,7 @@ p_volcano <- ggplot() +
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "right",
         legend.text     = element_text(size = 9))
-ggsave("volcano_SCFA_highlighted.png", plot = p_volcano,
+ggsave(file.path(DIR_FIGURES, "volcano_SCFA_highlighted.png"), plot = p_volcano,
        width = 10, height = 6, dpi = 300, bg = "white")
 found_genes <- rownames(expr_mat)[rownames(expr_mat) %in% all_scfa]
 if (length(found_genes) == 0) {
@@ -134,7 +98,6 @@ pheatmap(
   fontsize_row      = 9,
   color             = colorRampPalette(c("#457B9D", "white", "#E63946"))(100),
   main              = "SCFA Gene Expression: ALS vs Control (GSE56500)",
-  filename          = "heatmap_SCFA_genes.png",
+  filename          = file.path(DIR_FIGURES, "heatmap_SCFA_genes.png"),
   width             = 10,
   height            = 8)
-save.image("SCFA_GSE56500_analysis.RData")
