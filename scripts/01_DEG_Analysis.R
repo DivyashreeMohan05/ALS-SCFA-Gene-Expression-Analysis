@@ -4,6 +4,7 @@
 library(GEOquery)
 library(limma)
 library(ggplot2)
+library(ggrepel)
 source(here::here("scripts", "_paths.R"))
 source(here::here("scripts", "_fetch_geo.R"))
 # Loading GEO dataset
@@ -69,8 +70,11 @@ write.csv(sig_ALS, file.path(DIR_TABLES, "ALS_vs_Control_significant.csv"), row.
 #Volcano plot
 top_ALS$sig <- ifelse(top_ALS$adj.P.Val < 0.05 & abs(top_ALS$logFC) > 0.5,
                       "Significant", "NS")
-p <- ggplot(top_ALS, aes(x = logFC, y = -log10(P.Value), color = sig)) +
+top10 <- top_ALS[order(top_ALS$adj.P.Val), ][1:10, ]
+p <- ggplot(top_ALS, aes(x = logFC, y = -log10(adj.P.Val), color = sig)) +
   geom_point(alpha = 0.6, size = 1.8) +
+  geom_text_repel(data = top10, aes(label = GeneSymbol), color = "black",
+                   size = 3, max.overlaps = Inf) +
   scale_color_manual(values = c("NS" = "grey70", "Significant" = "red"), name = "") +
   geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed", color = "blue", alpha = 0.5) +
   geom_hline(yintercept = -log10(0.05),  linetype = "dashed", color = "blue", alpha = 0.5) +
@@ -79,7 +83,7 @@ p <- ggplot(top_ALS, aes(x = logFC, y = -log10(P.Value), color = sig)) +
            hjust = 1.1, vjust = 1.5, size = 4.5, color = "red") +
   labs(title = "ALS vs Control (GSE56500)",
        subtitle = "csALS + c9ALS combined",
-       x = "Log2 Fold Change", y = "-log10(P-value)") +
+       x = "Log2 Fold Change", y = "-log10(adj.P.Val)") +
   theme_bw(base_size = 13) +
   theme(plot.title    = element_text(hjust = 0.5, face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, color = "grey40"),

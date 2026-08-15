@@ -5,6 +5,7 @@
 library(GEOquery)
 library(limma)
 library(ggplot2)
+library(ggrepel)
 library(pheatmap)
 source(here::here("scripts", "_paths.R"))
 source(here::here("scripts", "_fetch_geo.R"))
@@ -62,19 +63,22 @@ write.csv(sig_68605, file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_significant.
 #Volcano plot
 top_68605$sig <- ifelse(top_68605$adj.P.Val < 0.05 & abs(top_68605$logFC) > 0.5,
                         "Significant", "NS")
-p_volcano <- ggplot(top_68605, aes(x = logFC, y = -log10(P.Value), color = sig)) +
+top10_68605 <- top_68605[order(top_68605$adj.P.Val), ][1:10, ]
+p_volcano <- ggplot(top_68605, aes(x = logFC, y = -log10(adj.P.Val), color = sig)) +
   geom_point(alpha = 0.6, size = 1.8) +
+  geom_text_repel(data = top10_68605, aes(label = GeneSymbol), color = "black",
+                   size = 3, max.overlaps = Inf) +
   scale_color_manual(values = c("NS" = "grey70", "Significant" = "red"), name = "") +
   geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed",
              color = "blue", alpha = 0.5) +
   geom_hline(yintercept = -log10(0.05), linetype = "dashed",
              color = "blue", alpha = 0.5) +
-  annotate("text", x = Inf, y = Inf,
+  annotate("text", x = Inf, y = -Inf,
            label = paste("Significant n =", sum(top_68605$sig == "Significant")),
-           hjust = 1.1, vjust = 1.5, size = 4.5, color = "red") +
+           hjust = 1.1, vjust = -1, size = 4.5, color = "red") +
   labs(title    = "ALS vs Control (GSE68605)",
        subtitle = "Affymetrix HG-U133 Plus 2.0",
-       x = "Log2 Fold Change", y = "-log10(P-value)") +
+       x = "Log2 Fold Change", y = "-log10(adj.P.Val)") +
   theme_bw(base_size = 13) +
   theme(plot.title      = element_text(hjust = 0.5, face = "bold"),
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
@@ -169,6 +173,33 @@ pheatmap(
   filename          = file.path(DIR_FIGURES, "heatmap_SCFA_GSE68605.png"),
   width             = 10, height = 8
 )
+#SCFA panel null plot - both datasets, nothing crosses adj.P.Val = 0.05
+scfa_56500 <- read.csv(file.path(DIR_TABLES, "SCFA_DEG_results.csv"))
+panel_null <- rbind(
+  data.frame(Gene = all_scfa, dataset = "GSE56500",
+             adj.P.Val = scfa_56500$adj.P.Val[match(all_scfa, scfa_56500$GeneSymbol)]),
+  data.frame(Gene = all_scfa, dataset = "GSE68605",
+             adj.P.Val = scfa_df$adj.P.Val[match(all_scfa, scfa_df$GeneSymbol)]))
+panel_null$detected <- !is.na(panel_null$adj.P.Val)
+panel_null$x_pos    <- ifelse(panel_null$detected, panel_null$adj.P.Val, 1.05)
+gene_order <- all_scfa[order(gene_category[all_scfa])]
+panel_null$Gene <- factor(panel_null$Gene, levels = rev(gene_order))
+p_scfa_null <- ggplot(panel_null, aes(x = x_pos, y = Gene)) +
+  geom_vline(xintercept = 0.05, linetype = "dashed", color = "red") +
+  geom_point(aes(color = detected, shape = detected), size = 2.5) +
+  scale_color_manual(values = c("TRUE" = "steelblue", "FALSE" = "grey60"), guide = "none") +
+  scale_shape_manual(values = c("TRUE" = 16, "FALSE" = 4), guide = "none") +
+  scale_x_continuous(limits = c(0, 1.12), breaks = c(0, 0.25, 0.5, 0.75, 1, 1.05),
+                      labels = c("0", "0.25", "0.5", "0.75", "1", "not on\nplatform")) +
+  facet_wrap(~ dataset) +
+  labs(title    = "SCFA panel: adjusted significance, both datasets",
+       subtitle = "None of the 33 curated genes cross adj.P.Val = 0.05 in either dataset",
+       x = "adj.P.Val", y = NULL) +
+  theme_bw(base_size = 13) +
+  theme(plot.title    = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, color = "grey40"))
+ggsave(file.path(DIR_FIGURES, "SCFA_panel_null.png"), plot = p_scfa_null,
+       width = 9, height = 9, dpi = 300, bg = "white")
 #Comparing GSE68605 with GSE56500 to look for overlap
 sig_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_significant.csv"))
 overlap_genes <- intersect(sig_68605$GeneSymbol, sig_56500$GeneSymbol)

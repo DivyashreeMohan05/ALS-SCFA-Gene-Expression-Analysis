@@ -5,7 +5,7 @@
 library(clusterProfiler)
 library(org.Hs.eg.db)
 library(ggplot2)
-library(enrichplot)
+library(digest)
 source(here::here("scripts", "_paths.R"))
 source(here::here("scripts", "_helpers.R"))
 
@@ -19,6 +19,10 @@ source(here::here("scripts", "_helpers.R"))
 #seeds below, kept as the primary result.
 CONSENSUS_SEEDS <- c(42, 1, 7, 123, 2024, 5, 11, 17, 23, 29,
                       31, 37, 41, 43, 47, 53, 59, 61, 67, 71)
+
+#Set to TRUE, or run with FORCE_RERUN=true, to force the 20-seed sweep
+#even if cached consensus CSVs already match the current logic
+FORCE_RERUN <- isTRUE(as.logical(Sys.getenv("FORCE_RERUN", "FALSE")))
 
 run_kegg_once <- function(ranked_entrez, seed) {
   set.seed(seed)
@@ -85,53 +89,102 @@ run_gsea <- function(ranked_entrez, label) {
 
   return(list(kegg = gsea_kegg, go = gsea_go, kegg_consensus = kegg_cons, go_consensus = go_cons,
               stability = stability))}
-#Generate and save GSEA dotplots (from the supplementary single-seed result)
-save_dotplot <- function(gsea_obj, title, filename, n = 15) {
-  if (nrow(as.data.frame(gsea_obj)) == 0) {
-    cat("No significant terms for:", title, "\n")
+
+#Skip the sweep if the consensus CSVs already reflect the computation logic
+#above (CONSENSUS_SEEDS through run_gsea) - same principle as
+#seed_stability.R: compute once, plot cheaply
+compute_hash <- digest::digest(paste(
+  deparse(CONSENSUS_SEEDS), deparse(run_kegg_once), deparse(run_go_once),
+  deparse(consensus_table), deparse(run_gsea), collapse = "\n"))
+hash_file <- file.path(DIR_INTERIM, "gsea_compute_hash.txt")
+consensus_files <- file.path(DIR_TABLES, c(
+  "GSEA_consensus_KEGG_GSE56500.csv", "GSEA_consensus_KEGG_GSE68605.csv",
+  "GSEA_consensus_GO_GSE56500.csv",   "GSEA_consensus_GO_GSE68605.csv"))
+USE_CACHE <- !FORCE_RERUN && all(file.exists(consensus_files)) &&
+  file.exists(hash_file) && readLines(hash_file, warn = FALSE)[1] == compute_hash
+
+#Cached consensus tables only - no single-seed CSVs, no stability rows
+load_consensus <- function(label) {
+  list(kegg_consensus = read.csv(file.path(DIR_TABLES, paste0("GSEA_consensus_KEGG_", label, ".csv"))),
+       go_consensus   = read.csv(file.path(DIR_TABLES, paste0("GSEA_consensus_GO_", label, ".csv"))),
+       stability = NULL)}
+#Consensus dotplot - NES on x, dot size by seed_fraction, colour by median p.adjust
+save_consensus_dotplot <- function(cons, title, filename, top_n = NULL) {
+  cons <- cons[!is.na(cons$median_NES), ]
+  cons <- if (!is.null(top_n)) {
+    cons[order(-cons$seed_fraction), ][seq_len(min(top_n, nrow(cons))), ]
+  } else {
+    cons[cons$seed_fraction >= 0.8, ]
+  }
+  if (nrow(cons) == 0) {
+    cat("No consensus terms for:", title, "\n")
     return(NULL)}
-  p <- dotplot(gsea_obj, showCategory = n, split = ".sign") +
-    facet_grid(. ~ .sign) +
-    labs(title = title) +
-    theme(
-      plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
-      axis.text.y = element_text(size = 8))
-  ggsave(
-    file.path(DIR_FIGURES, filename),
-    plot = p,
-    width = 12,
-    height = 8,
-    dpi = 300,
-    bg = "white")
-   return(p)}
+  cons$Description <- factor(cons$Description, levels = cons$Description[order(cons$median_NES)])
+  p <- ggplot(cons, aes(x = median_NES, y = Description, size = seed_fraction, color = median_p.adjust)) +
+    geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+    geom_point() +
+    scale_color_gradient(low = "#E63946", high = "#A8DADC", name = "median\np.adjust") +
+    scale_size_continuous(name = "seed\nfraction", range = c(2, 7)) +
+    labs(title = title, x = "median NES", y = NULL) +
+    theme_bw(base_size = 13) +
+    theme(plot.title    = element_text(hjust = 0.5, face = "bold", size = 12),
+          axis.text.y   = element_text(size = 8))
+  ggsave(file.path(DIR_FIGURES, filename), plot = p, width = 12, height = 8, dpi = 300, bg = "white")
+  return(p)}
+#Null dotplot - closest terms to significance, none crossing 0.05, same
+#visual language as the SCFA panel null plot
+save_null_dotplot <- function(cons, title, filename, top_n = 20) {
+  top <- cons[order(cons$median_p.adjust), ][seq_len(min(top_n, nrow(cons))), ]
+  top$Description <- factor(top$Description, levels = rev(top$Description[order(-top$median_p.adjust)]))
+  p <- ggplot(top, aes(x = median_p.adjust, y = Description)) +
+    geom_vline(xintercept = 0.05, linetype = "dashed", color = "red") +
+    geom_point(color = "steelblue", size = 2.5) +
+    labs(title = title, subtitle = "Closest terms to significance across 20 seeds - none cross 0.05",
+         x = "median p.adjust", y = NULL) +
+    theme_bw(base_size = 13) +
+    theme(plot.title    = element_text(hjust = 0.5, face = "bold", size = 12),
+          plot.subtitle = element_text(hjust = 0.5, color = "grey40"),
+          axis.text.y   = element_text(size = 8))
+  ggsave(file.path(DIR_FIGURES, filename), plot = p, width = 12, height = 8, dpi = 300, bg = "white")
+  return(p)}
 #GSEA analysis: GSE56500
-top_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_all.csv"))
-ranked_56500 <- make_ranked_list(top_56500)
-ranked_56500_entrez <- symbol_to_entrez(ranked_56500)
-cat("Genes mapped to Entrez (GSE56500):", length(ranked_56500_entrez), "\n")
-gsea_56500 <- run_gsea(ranked_56500_entrez, "GSE56500")
-save_dotplot(
-  gsea_56500$kegg,
-  "GSEA KEGG — ALS vs Control (GSE56500)",
+if (USE_CACHE) {
+  cat("Consensus CSVs match current logic - skipping the 20-seed sweep for GSE56500\n")
+  gsea_56500 <- load_consensus("GSE56500")
+} else {
+  top_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_all.csv"))
+  ranked_56500 <- make_ranked_list(top_56500)
+  ranked_56500_entrez <- symbol_to_entrez(ranked_56500)
+  cat("Genes mapped to Entrez (GSE56500):", length(ranked_56500_entrez), "\n")
+  gsea_56500 <- run_gsea(ranked_56500_entrez, "GSE56500")
+}
+save_consensus_dotplot(
+  gsea_56500$kegg_consensus,
+  "GSEA KEGG consensus - ALS vs Control (GSE56500)",
   "GSEA_KEGG_dotplot_GSE56500.png")
-save_dotplot(
-  gsea_56500$go,
-  "GSEA GO BP — ALS vs Control (GSE56500)",
-  "GSEA_GOBP_dotplot_GSE56500.png")
+save_consensus_dotplot(
+  gsea_56500$go_consensus,
+  "GSEA GO BP consensus - ALS vs Control (GSE56500)",
+  "GSEA_GOBP_dotplot_GSE56500.png", top_n = 20)
 #GSEA analysis: GSE68605
-top_68605 <- read.csv(file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_all.csv"))
-ranked_68605 <- make_ranked_list(top_68605)
-ranked_68605_entrez <- symbol_to_entrez(ranked_68605)
-cat("Genes mapped to Entrez (GSE68605):", length(ranked_68605_entrez), "\n")
-gsea_68605 <- run_gsea(ranked_68605_entrez, "GSE68605")
-save_dotplot(
-  gsea_68605$kegg,
-  "GSEA KEGG — ALS vs Control (GSE68605)",
+if (USE_CACHE) {
+  cat("Consensus CSVs match current logic - skipping the 20-seed sweep for GSE68605\n")
+  gsea_68605 <- load_consensus("GSE68605")
+} else {
+  top_68605 <- read.csv(file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_all.csv"))
+  ranked_68605 <- make_ranked_list(top_68605)
+  ranked_68605_entrez <- symbol_to_entrez(ranked_68605)
+  cat("Genes mapped to Entrez (GSE68605):", length(ranked_68605_entrez), "\n")
+  gsea_68605 <- run_gsea(ranked_68605_entrez, "GSE68605")
+}
+save_null_dotplot(
+  gsea_68605$kegg_consensus,
+  "GSEA KEGG - ALS vs Control (GSE68605)",
   "GSEA_KEGG_dotplot_GSE68605.png")
-save_dotplot(
-  gsea_68605$go,
-  "GSEA GO BP — ALS vs Control (GSE68605)",
-  "GSEA_GOBP_dotplot_GSE68605.png")
+save_consensus_dotplot(
+  gsea_68605$go_consensus,
+  "GSEA GO BP consensus - ALS vs Control (GSE68605)",
+  "GSEA_GOBP_dotplot_GSE68605.png", top_n = 20)
 #Cross dataset comparison - consensus-significant sets (seed_fraction >= 0.8)
 kegg_56500 <- gsea_56500$kegg_consensus[gsea_56500$kegg_consensus$seed_fraction >= 0.8, ]
 kegg_68605 <- gsea_68605$kegg_consensus[gsea_68605$kegg_consensus$seed_fraction >= 0.8, ]
@@ -148,8 +201,11 @@ write.csv(
   data.frame(Pathway = shared_kegg),
   file.path(DIR_TABLES, "GSEA_shared_KEGG_pathways.csv"),
   row.names = FALSE)
-#Per-seed significant counts, for seed_stability.R
-write.csv(
-  rbind(gsea_56500$stability, gsea_68605$stability),
-  file.path(DIR_TABLES, "seed_stability_counts.csv"),
-  row.names = FALSE)
+#Per-seed significant counts, for seed_stability.R - only after a real sweep
+if (!is.null(gsea_56500$stability) && !is.null(gsea_68605$stability)) {
+  write.csv(
+    rbind(gsea_56500$stability, gsea_68605$stability),
+    file.path(DIR_TABLES, "seed_stability_counts.csv"),
+    row.names = FALSE)
+  writeLines(compute_hash, hash_file)
+}
