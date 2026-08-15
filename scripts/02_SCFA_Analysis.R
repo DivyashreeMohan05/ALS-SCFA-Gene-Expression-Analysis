@@ -6,29 +6,6 @@ library(ggplot2)
 library(pheatmap)
 source(here::here("scripts", "_paths.R"))
 list2env(readRDS(file.path(DIR_INTERIM, "ALS_DEG_final.rds")), environment())
-# loaded RData retained some residual probe-style rownames after DEG
-clean_rownames <- function(x) {
-  if (grepl(" /// ", x)) {
-    parts <- strsplit(x, " /// ")[[1]]
-  } else if (grepl(" // ", x)) {
-    parts <- strsplit(x, " // ")[[1]]
-  } else {
-    return(x)
-  }
-  for (i in 2:length(parts)) {
-    gene <- trimws(parts[i])
-    if (!is.na(gene) && gene != "" && gene != "---" &&
-        !grepl("^[0-9]", gene) && !grepl("^NM_|^NR_|^XM_|^ENST|^uc", gene)) {
-      return(gene)
-    }}
-  return(trimws(parts[length(parts)]))}
-rownames(expr_mat) <- sapply(rownames(expr_mat), clean_rownames)
-top_ALS$GeneSymbol <- sapply(top_ALS$GeneSymbol, clean_rownames)
-iqr_vals        <- apply(expr_mat, 1, IQR)
-expr_mat        <- expr_mat[order(iqr_vals, decreasing = TRUE), ]
-expr_mat        <- expr_mat[!duplicated(rownames(expr_mat)), ]
-top_ALS  <- top_ALS[order(top_ALS$P.Value), ]
-top_ALS  <- top_ALS[!duplicated(top_ALS$GeneSymbol), ]
 required_objects <- c("top_ALS", "expr_mat", "pheno")
 missing_objects <- required_objects[!sapply(required_objects, exists)]
 if (length(missing_objects) > 0) {

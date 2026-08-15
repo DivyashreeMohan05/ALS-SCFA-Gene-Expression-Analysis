@@ -92,27 +92,6 @@ save_dotplot <- function(gsea_obj, title, filename, n = 15) {
    return(p)}
 #GSEA analysis: GSE56500
 top_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_all.csv"))
-clean_symbol <- function(x) {
-  if (is.na(x)) return(NA)
-  if (grepl(" /// ", x)) {
-    parts <- strsplit(x, " /// ")[[1]]
-  } else if (grepl(" // ", x)) {
-    parts <- strsplit(x, " // ")[[1]]
-  } else {
-    return(x)
-  }
-  for (i in 2:length(parts)) {
-    gene <- trimws(parts[i])
-    if (!is.na(gene) && gene != "" && gene != "---" &&
-        !grepl("^[0-9]", gene) && !grepl("^NM_|^NR_|^XM_|^ENST|^uc|^AF|^AK|^BC", gene)) {
-      return(gene)
-    }
-  }
-  return(trimws(parts[length(parts)]))
-}
-top_56500$GeneSymbol <- sapply(top_56500$GeneSymbol, clean_symbol)
-top_56500 <- top_56500[!is.na(top_56500$GeneSymbol), ]
-top_56500 <- top_56500[!duplicated(top_56500$GeneSymbol), ]
 ranked_56500 <- make_ranked_list(top_56500)
 ranked_56500_entrez <- symbol_to_entrez(ranked_56500)
 cat("Genes mapped to Entrez (GSE56500):", length(ranked_56500_entrez), "\n")
