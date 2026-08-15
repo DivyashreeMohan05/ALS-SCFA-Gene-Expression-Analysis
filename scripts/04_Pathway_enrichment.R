@@ -114,6 +114,7 @@ save_consensus_dotplot <- function(cons, title, filename, top_n = NULL) {
     geom_point() +
     scale_color_gradient(low = "#E63946", high = "#A8DADC", name = "median\np.adjust") +
     scale_size_continuous(name = "seed\nfraction", range = c(2, 7)) +
+    guides(size = guide_legend(order = 1), color = guide_colorbar(order = 2)) +
     labs(title = title, x = "median NES", y = NULL) +
     theme_bw(base_size = 13) +
     theme(plot.title    = element_text(hjust = 0.5, face = "bold", size = 12),

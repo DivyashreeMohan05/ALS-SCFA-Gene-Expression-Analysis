@@ -83,6 +83,7 @@ p_volcano <- ggplot(top_68605, aes(x = logFC, y = -log10(adj.P.Val), color = sig
   theme(plot.title      = element_text(hjust = 0.5, face = "bold"),
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "top")
+set.seed(42)
 ggsave(file.path(DIR_FIGURES, "volcano_GSE68605.png"), plot = p_volcano,
        width = 8, height = 6, dpi = 300, bg = "white")
 #Saving objects needed by 06_cross_tissue_concordance.R
