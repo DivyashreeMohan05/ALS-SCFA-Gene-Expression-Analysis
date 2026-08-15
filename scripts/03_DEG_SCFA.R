@@ -21,19 +21,28 @@ pheno$ALS_status <- ifelse(
   "Control",
   "ALS")
 table(pheno$ALS_status)
-#Probe annotation
-fdata$GeneSymbol <- trimws(as.character(fdata$`Gene Symbol`))
-fdata$GeneSymbol[fdata$GeneSymbol == "" | fdata$GeneSymbol == "---"] <- NA
+#Probe annotation - Gene Symbol is /// separated for probesets that map to
+#more than one gene; only assign a symbol when exactly one is named
+resolve_symbol <- function(symbols) {
+  symbols <- unique(symbols[!is.na(symbols) & symbols != ""])
+  if (length(symbols) == 1) return(symbols)
+  NA
+}
+fdata$GeneSymbol <- sapply(as.character(fdata$`Gene Symbol`), function(x) {
+  if (is.na(x) || x == "") return(NA)
+  resolve_symbol(trimws(strsplit(x, " /// ")[[1]]))
+})
 valid    <- !is.na(fdata$GeneSymbol)
 expr_mat <- expr_mat[valid, ]
 fdata    <- fdata[valid, ]
-iqr_order          <- order(apply(expr_mat, 1, IQR), decreasing = TRUE)
-expr_mat           <- expr_mat[iqr_order, ]
-fdata              <- fdata[iqr_order, ]
-keep               <- !duplicated(fdata$GeneSymbol)
+iqr_vals           <- apply(expr_mat, 1, IQR)
+probe_id           <- rownames(fdata)
+keep               <- tapply(seq_along(iqr_vals), fdata$GeneSymbol,
+                              function(i) i[order(-iqr_vals[i], probe_id[i])[1]])
 expr_mat           <- expr_mat[keep, ]
-rownames(expr_mat) <- fdata$GeneSymbol[keep]
-cat("Genes retained after probe collapse:", nrow(expr_mat), "\n")
+fdata              <- fdata[keep, ]
+rownames(expr_mat) <- fdata$GeneSymbol
+cat("Probes:", length(iqr_vals), "-> Genes retained after collapse:", nrow(expr_mat), "\n")
 #DEG using limma
 group            <- factor(pheno$ALS_status, levels = c("Control", "ALS"))
 design           <- model.matrix(~0 + group)

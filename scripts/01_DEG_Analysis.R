@@ -13,40 +13,37 @@ pheno     <- pData(gse)
 fdata     <- fData(gse) #feature annotation
 #Creating a ALS/Control label
 pheno$ALS_status <- ifelse(pheno$`patient group:ch1` == "control", "Control", "ALS")
-#Probe to Gene symbol mapping
+#Probe to Gene symbol mapping - gene_assignment is /// separated transcript
+#blocks, each block is "accession // symbol"; a probe is only assigned a
+#symbol if every block agrees on exactly one distinct symbol
+resolve_symbol <- function(symbols) {
+  symbols <- unique(symbols[!is.na(symbols) & symbols != ""])
+  if (length(symbols) == 1) return(symbols)
+  NA
+}
 extract_gene <- function(x) {
-  if (is.na(x) || x == "---") return(NA)
-  # trying /// separator, then // 
-  if (grepl(" /// ", x)) {
-    parts <- strsplit(x, " /// ")[[1]]
-  } else if (grepl(" // ", x)) {
-    parts <- strsplit(x, " // ")[[1]]
-  } else {
-    return(trimws(x))
+  if (is.na(x)) return(NA)
+  blocks <- strsplit(x, " /// ")[[1]]
+  fields2 <- character(0)
+  for (b in blocks) {
+    f <- strsplit(b, " // ")[[1]]
+    if (length(f) >= 2) fields2 <- c(fields2, trimws(f[2]))
   }
-  #trying out part 2 
-  for (i in 2:length(parts)) {
-    gene <- trimws(parts[i])
-    if (!is.na(gene) && gene != "" && gene != "---" && 
-        !grepl("^[0-9]", gene) && !grepl("^NM_|^NR_|^XM_|^ENST|^uc", gene)) {
-      return(gene)
-    }}
-  gene <- trimws(parts[1])
-  if (!is.na(gene) && gene != "" && gene != "---") return(gene)
-  return(NA)
+  resolve_symbol(fields2)
 }
 fdata$GeneSymbol  <- sapply(fdata$gene_assignment, extract_gene)
 valid             <- !is.na(fdata$GeneSymbol)
 expr_mat          <- expr_mat[valid,]
 fdata             <- fdata[valid,]
-#Probes combined to one row per gene (IQR-based selection)
-iqr_order  <- order(apply(expr_mat, 1, IQR), decreasing = TRUE)
-expr_mat   <- expr_mat[iqr_order, ]
-fdata      <- fdata[iqr_order, ]
-keep       <- !duplicated(fdata$GeneSymbol)
+#Probes combined to one row per gene: highest IQR wins, ties broken by probe ID
+iqr_vals   <- apply(expr_mat, 1, IQR)
+probe_id   <- rownames(fdata)
+keep       <- tapply(seq_along(iqr_vals), fdata$GeneSymbol,
+                      function(i) i[order(-iqr_vals[i], probe_id[i])[1]])
 expr_mat   <- expr_mat[keep, ]
-rownames(expr_mat) <- fdata$GeneSymbol[keep]
-cat("Genes retained after probe collapse:", nrow(expr_mat), "\n")
+fdata      <- fdata[keep, ]
+rownames(expr_mat) <- fdata$GeneSymbol
+cat("Probes:", length(iqr_vals), "-> Genes retained after collapse:", nrow(expr_mat), "\n")
 # Inspecting for non-standard names 
 suspicious <- grep("^[0-9]|\\.|^-", rownames(expr_mat), value = TRUE)
 if (length(suspicious) > 0) {
