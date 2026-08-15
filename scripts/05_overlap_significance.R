@@ -85,4 +85,70 @@ stats <- data.frame(
              paste0(agree, "/", k), round(p_null, 4), signif(bt$p.value, 4)))
 
 write.csv(concordance, file.path(DIR_TABLES, "KEGG_overlap_concordance.csv"), row.names = FALSE)
+
+#Same two tests, GO Biological Process terms instead of KEGG pathways
+gsea_all_go <- function(ranked_entrez) {
+  as.data.frame(
+    gseGO(
+      geneList     = ranked_entrez,
+      OrgDb        = org.Hs.eg.db,
+      ont          = "BP",
+      minGSSize    = 15,
+      maxGSSize    = 500,
+      pvalueCutoff = 1,
+      nPermSimple  = 10000,
+      seed         = TRUE,
+      verbose      = FALSE))
+}
+
+all_A_go <- gsea_all_go(ranked_A)
+all_B_go <- gsea_all_go(ranked_B)
+
+universe_go <- intersect(all_A_go$ID, all_B_go$ID)
+N_go <- length(universe_go)
+
+sig_A_go <- all_A_go$ID[all_A_go$p.adjust < 0.05 & all_A_go$ID %in% universe_go]
+sig_B_go <- all_B_go$ID[all_B_go$p.adjust < 0.05 & all_B_go$ID %in% universe_go]
+shared_go <- intersect(sig_A_go, sig_B_go)
+
+k_go <- length(shared_go); K_go <- length(sig_A_go); n_go <- length(sig_B_go)
+expected_go  <- K_go * n_go / N_go
+p_overlap_go <- phyper(k_go - 1, K_go, N_go - K_go, n_go, lower.tail = FALSE)
+
+cat("\nGO BP terms tested in both:", N_go, "\n")
+cat("Significant - GSE56500:", K_go, "| GSE68605:", n_go, "\n")
+cat("Shared:", k_go, "| expected:", round(expected_go, 2), "\n")
+cat("Hypergeometric p =", signif(p_overlap_go, 3), "\n")
+
+nes_A_go <- setNames(all_A_go$NES, all_A_go$ID)
+nes_B_go <- setNames(all_B_go$NES, all_B_go$ID)
+
+agree_go  <- sum(sign(nes_A_go[shared_go]) == sign(nes_B_go[shared_go]))
+pA_go     <- if (K_go > 0) mean(nes_A_go[sig_A_go] > 0) else NA
+pB_go     <- if (n_go > 0) mean(nes_B_go[sig_B_go] > 0) else NA
+p_null_go <- pA_go * pB_go + (1 - pA_go) * (1 - pB_go)
+bt_go     <- if (k_go > 0) binom.test(agree_go, k_go, p_null_go, alternative = "greater") else list(p.value = NA)
+
+cat("\nActivated fraction - GSE56500:", round(pA_go, 2), "| GSE68605:", round(pB_go, 2), "\n")
+cat("Expected agreement:", round(p_null_go, 3), "\n")
+cat("Observed agreement:", agree_go, "/", k_go, "\n")
+cat("Binomial p =", signif(bt_go$p.value, 3), "\n")
+
+concordance_go <- data.frame(
+  Term          = all_A_go$Description[match(shared_go, all_A_go$ID)],
+  NES_GSE56500  = round(nes_A_go[shared_go], 3),
+  NES_GSE68605  = round(nes_B_go[shared_go], 3),
+  SameDirection = sign(nes_A_go[shared_go]) == sign(nes_B_go[shared_go]),
+  row.names     = NULL)
+
+write.csv(concordance_go, file.path(DIR_TABLES, "GO_overlap_concordance.csv"), row.names = FALSE)
+
+stats_go <- data.frame(
+  metric = paste0("GO_", c("universe_N", "sig_GSE56500", "sig_GSE68605", "shared",
+                            "expected_by_chance", "hypergeometric_p",
+                            "sign_agreement", "null_agreement_prob", "binomial_p")),
+  value  = c(N_go, K_go, n_go, k_go, round(expected_go, 2), signif(p_overlap_go, 4),
+             paste0(agree_go, "/", k_go), round(p_null_go, 4), signif(bt_go$p.value, 4)))
+
+stats <- rbind(stats, stats_go)
 write.csv(stats, file.path(DIR_TABLES, "overlap_significance_stats.csv"), row.names = FALSE)
