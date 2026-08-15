@@ -4,7 +4,8 @@
 # Load DEG results
 library(ggplot2)
 library(pheatmap)
-load("../DEG/ALS_DEG_final.RData")
+source(here::here("scripts", "_paths.R"))
+list2env(readRDS(file.path(DIR_INTERIM, "ALS_DEG_final.rds")), environment())
 # loaded RData retained some residual probe-style rownames after DEG
 clean_rownames <- function(x) {
   if (grepl(" /// ", x)) {
@@ -60,7 +61,7 @@ cat(
   "Significant SCFA genes:",
   sum(scfa_df$adj.P.Val < 0.05),"\n")
 print(scfa_df[, c("GeneSymbol", "Category", "logFC", "P.Value", "adj.P.Val", "sig")])
-write.csv(scfa_df, "SCFA_DEG_results.csv", row.names = FALSE)
+write.csv(scfa_df, file.path(DIR_TABLES, "SCFA_DEG_results.csv"), row.names = FALSE)
 category_colors <- c(
   "FFA Receptors"       = "#E63946",
   "Transporters"        = "#F4A261",
@@ -98,7 +99,7 @@ p_volcano <- ggplot() +
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "right",
         legend.text     = element_text(size = 9))
-ggsave("volcano_SCFA_highlighted.png", plot = p_volcano,
+ggsave(file.path(DIR_FIGURES, "volcano_SCFA_highlighted.png"), plot = p_volcano,
        width = 10, height = 6, dpi = 300, bg = "white")
 found_genes <- rownames(expr_mat)[rownames(expr_mat) %in% all_scfa]
 if (length(found_genes) == 0) {
@@ -134,7 +135,6 @@ pheatmap(
   fontsize_row      = 9,
   color             = colorRampPalette(c("#457B9D", "white", "#E63946"))(100),
   main              = "SCFA Gene Expression: ALS vs Control (GSE56500)",
-  filename          = "heatmap_SCFA_genes.png",
+  filename          = file.path(DIR_FIGURES, "heatmap_SCFA_genes.png"),
   width             = 10,
   height            = 8)
-save.image("SCFA_GSE56500_analysis.RData")

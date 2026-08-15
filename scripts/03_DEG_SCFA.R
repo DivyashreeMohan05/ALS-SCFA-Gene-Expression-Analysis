@@ -6,6 +6,7 @@ library(GEOquery)
 library(limma)
 library(ggplot2)
 library(pheatmap)
+source(here::here("scripts", "_paths.R"))
 #Loading GEO dataset
 gse      <- getGEO("GSE68605", GSEMatrix = TRUE)[[1]]
 expr_mat <- exprs(gse)
@@ -45,8 +46,8 @@ top_68605            <- topTable(fit2, coef = "ALS_vs_Control",
 top_68605$GeneSymbol <- rownames(top_68605)
 sig_68605 <- subset(top_68605, adj.P.Val< 0.05 & abs(logFC) > 0.5)
 print(paste("GSE68605 significant DEGs:", nrow(sig_68605)))
-write.csv(top_68605, "GSE68605_ALS_vs_Control_all.csv",         row.names = FALSE)
-write.csv(sig_68605, "GSE68605_ALS_vs_Control_significant.csv", row.names = FALSE)
+write.csv(top_68605, file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_all.csv"),         row.names = FALSE)
+write.csv(sig_68605, file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_significant.csv"), row.names = FALSE)
 #Volcano plot
 top_68605$sig <- ifelse(top_68605$adj.P.Val < 0.05 & abs(top_68605$logFC) > 0.5,
                         "Significant", "NS")
@@ -67,7 +68,7 @@ p_volcano <- ggplot(top_68605, aes(x = logFC, y = -log10(P.Value), color = sig))
   theme(plot.title      = element_text(hjust = 0.5, face = "bold"),
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "top")
-ggsave("volcano_GSE68605.png", plot = p_volcano,
+ggsave(file.path(DIR_FIGURES, "volcano_GSE68605.png"), plot = p_volcano,
        width = 8, height = 6, dpi = 300, bg = "white")
 
 #SCFA gene panel
@@ -93,7 +94,7 @@ scfa_df$sig      <- ifelse(scfa_df$adj.P.Val < 0.05, "Significant", "NS")
 scfa_df          <- scfa_df[order(scfa_df$Category, scfa_df$P.Value), ]
 cat("SCFA genes found in GSE68605:", nrow(scfa_df), "of", length(all_scfa), "\n")
 print(scfa_df[, c("GeneSymbol", "Category", "logFC", "P.Value", "adj.P.Val", "sig")])
-write.csv(scfa_df, "GSE68605_SCFA_results.csv", row.names = FALSE)
+write.csv(scfa_df, file.path(DIR_TABLES, "GSE68605_SCFA_results.csv"), row.names = FALSE)
 #SCFA-focused volcano plot
 category_colors <- c(
   "FFA Receptors"       = "#E63946",
@@ -131,7 +132,7 @@ p_scfa_volcano <- ggplot() +
         plot.subtitle   = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "right",
         legend.text     = element_text(size = 9))
-ggsave("volcano_SCFA_GSE68605.png", plot = p_scfa_volcano,
+ggsave(file.path(DIR_FIGURES, "volcano_SCFA_GSE68605.png"), plot = p_scfa_volcano,
        width = 10, height = 6, dpi = 300, bg = "white")
 #heatmap
 found_genes <- rownames(expr_mat)[rownames(expr_mat) %in% all_scfa]
@@ -165,11 +166,11 @@ pheatmap(
   fontsize_row      = 9,
   color             = colorRampPalette(c("#457B9D", "white", "#E63946"))(100),
   main              = "SCFA Gene Expression: ALS vs Control (GSE68605)",
-  filename          = "heatmap_SCFA_GSE68605.png",
+  filename          = file.path(DIR_FIGURES, "heatmap_SCFA_GSE68605.png"),
   width             = 10, height = 8
 )
 #Comparing GSE68605 with GSE56500 to look for overlap
-sig_56500 <- read.csv("../DEG/ALS_vs_Control_significant.csv")
+sig_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_significant.csv"))
 overlap_genes <- intersect(sig_68605$GeneSymbol, sig_56500$GeneSymbol)
 cat("\nOverlapping DEGs (GSE56500 ∩ GSE68605):", length(overlap_genes), "\n")
 overlap_df <- sig_68605[sig_68605$GeneSymbol %in% overlap_genes,
@@ -179,10 +180,9 @@ overlap_56500 <- sig_56500[sig_56500$GeneSymbol %in% overlap_genes,
                            c("GeneSymbol", "logFC", "P.Value")]
 overlap_final <- merge(overlap_df, overlap_56500, by = "GeneSymbol")
 overlap_final <- overlap_final[order(overlap_final$P.Value_68605), ]
-write.csv(overlap_final, "DEG_overlap_GSE56500_GSE68605.csv", row.names = FALSE)
+write.csv(overlap_final, file.path(DIR_TABLES, "DEG_overlap_GSE56500_GSE68605.csv"), row.names = FALSE)
 print(head(overlap_final, 20))
 #Identifies SCFA-related genes within DEG overlap
 scfa_overlap <- overlap_genes[overlap_genes %in% all_scfa]
 cat("SCFA genes in overlap:", length(scfa_overlap), "\n")
 if (length(scfa_overlap) > 0) print(scfa_overlap)
-save.image("GSE68605_analysis.RData")

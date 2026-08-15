@@ -6,6 +6,7 @@ library(clusterProfiler)
 library(org.Hs.eg.db)
 library(ggplot2)
 library(enrichplot)
+source(here::here("scripts", "_paths.R"))
 #Creating a ranked gene list
 make_ranked_list <- function(df) {
   df <- df[!is.na(df$GeneSymbol) & !is.na(df$logFC) & !is.na(df$P.Value), ]
@@ -56,12 +57,12 @@ run_gsea <- function(ranked_entrez, label) {
     gsea_go@result <- gsea_go@result[!is.na(gsea_go@result$pvalue), ]}
   write.csv(
       as.data.frame(gsea_kegg),
-      paste0("GSEA_KEGG_", label, ".csv"),
+      file.path(DIR_TABLES, paste0("GSEA_KEGG_", label, ".csv")),
       row.names = FALSE)
   if (nrow(as.data.frame(gsea_go)) > 0) {
     write.csv(
       as.data.frame(gsea_go),
-      paste0("GSEA_GO_BP_", label, ".csv"),
+      file.path(DIR_TABLES, paste0("GSEA_GO_BP_", label, ".csv")),
       row.names = FALSE) }
   cat("\n===", label, "===\n")
   cat("KEGG pathways:", nrow(as.data.frame(gsea_kegg)), "\n")
@@ -82,7 +83,7 @@ save_dotplot <- function(gsea_obj, title, filename, n = 15) {
       plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
       axis.text.y = element_text(size = 8))
   ggsave(
-    filename,
+    file.path(DIR_FIGURES, filename),
     plot = p,
     width = 12,
     height = 8,
@@ -90,7 +91,7 @@ save_dotplot <- function(gsea_obj, title, filename, n = 15) {
     bg = "white")
    return(p)}
 #GSEA analysis: GSE56500
-top_56500 <- read.csv("../DEG/ALS_vs_Control_all.csv")
+top_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_all.csv"))
 clean_symbol <- function(x) {
   if (is.na(x)) return(NA)
   if (grepl(" /// ", x)) {
@@ -130,7 +131,7 @@ save_dotplot(
   "GSEA GO BP — ALS vs Control (GSE56500)",
   "GSEA_GOBP_dotplot_GSE56500.png")
 #GSEA analysis: GSE68605
-top_68605 <- read.csv("../DEG+SCFA/GSE68605_ALS_vs_Control_all.csv")
+top_68605 <- read.csv(file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_all.csv"))
 ranked_68605 <- make_ranked_list(top_68605)
 ranked_68605_entrez <- symbol_to_entrez(ranked_68605)
 cat("Genes mapped to Entrez (GSE68605):", length(ranked_68605_entrez), "\n") 
@@ -161,9 +162,7 @@ if (nrow(kegg_56500) > 0 & nrow(kegg_68605) > 0) {
     print(shared_kegg)
     write.csv(
       data.frame(Pathway = shared_kegg),
-      "GSEA_shared_KEGG_pathways.csv",
+      file.path(DIR_TABLES, "GSEA_shared_KEGG_pathways.csv"),
       row.names = FALSE)} else {
      cat("No shared KEGG pathways — tissue-specific enrichment patterns\n")
     }}
-#Save complete GSEA workspace
-save.image("GSEA_analysis.RData")

@@ -4,6 +4,7 @@
 library(GEOquery)
 library(limma)
 library(ggplot2)
+source(here::here("scripts", "_paths.R"))
 # Loading GEO dataset
 gse       <- getGEO("GSE56500", GSEMatrix = TRUE)[[1]]
 expr_mat  <- exprs(gse) #expression matrix of probes × samples 
@@ -65,8 +66,8 @@ top_ALS$GeneSymbol <- rownames(top_ALS)
 sig_ALS <- subset(top_ALS,adj.P.Val < 0.05 & abs(logFC) > 0.5)
 print(paste("Total significant DEGs:", nrow(sig_ALS)))
 #Saving results
-write.csv(top_ALS, "ALS_vs_Control_all.csv",row.names = FALSE)
-write.csv(sig_ALS, "ALS_vs_Control_significant.csv", row.names = FALSE)
+write.csv(top_ALS, file.path(DIR_TABLES, "ALS_vs_Control_all.csv"), row.names = FALSE)
+write.csv(sig_ALS, file.path(DIR_TABLES, "ALS_vs_Control_significant.csv"), row.names = FALSE)
 #Volcano plot
 top_ALS$sig <- ifelse(top_ALS$adj.P.Val < 0.05 & abs(top_ALS$logFC) > 0.5,
                       "Significant", "NS")
@@ -85,7 +86,8 @@ p <- ggplot(top_ALS, aes(x = logFC, y = -log10(P.Value), color = sig)) +
   theme(plot.title    = element_text(hjust = 0.5, face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, color = "grey40"),
         legend.position = "top")
-ggsave("volcano_ALS_combined.png", plot = p,
+ggsave(file.path(DIR_FIGURES, "volcano_ALS_combined.png"), plot = p,
        width = 8, height = 6, dpi = 300, bg = "white")
-#Saving the entire workspace 
-save.image("ALS_DEG_final.RData")
+#Saving objects needed by 02_SCFA_Analysis.R
+saveRDS(list(expr_mat = expr_mat, top_ALS = top_ALS, pheno = pheno),
+        file.path(DIR_INTERIM, "ALS_DEG_final.rds"))
