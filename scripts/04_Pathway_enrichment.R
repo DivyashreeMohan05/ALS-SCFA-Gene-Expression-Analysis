@@ -67,9 +67,12 @@ run_gsea <- function(ranked_entrez, label) {
       as.data.frame(gsea_go),
       file.path(DIR_TABLES, paste0("GSEA_GO_BP_", label, ".csv")),
       row.names = FALSE) }
+  #pvalueCutoff filters on raw pvalue, not p.adjust - check p.adjust explicitly
+  n_kegg_sig <- sum(as.data.frame(gsea_kegg)$p.adjust < 0.05, na.rm = TRUE)
+  n_go_sig   <- sum(as.data.frame(gsea_go)$p.adjust < 0.05, na.rm = TRUE)
   cat("\n===", label, "===\n")
-  cat("KEGG pathways:", nrow(as.data.frame(gsea_kegg)), "\n")
-  cat("GO BP terms: ", nrow(as.data.frame(gsea_go)), "\n")
+  cat("KEGG pathways (p.adjust < 0.05):", n_kegg_sig, "of", nrow(as.data.frame(gsea_kegg)), "returned\n")
+  cat("GO BP terms   (p.adjust < 0.05):", n_go_sig, "of", nrow(as.data.frame(gsea_go)), "returned\n")
   return(list(
     kegg = gsea_kegg,
     go = gsea_go
@@ -130,21 +133,21 @@ save_dotplot(
   gsea_68605$go,
   "GSEA GO BP — ALS vs Control (GSE68605)",
   "GSEA_GOBP_dotplot_GSE68605.png")
-#Cross dataset comparison
+#Cross dataset comparison - restricted to p.adjust < 0.05, not gseKEGG's raw-pvalue return set
 kegg_56500 <- as.data.frame(gsea_56500$kegg)
+kegg_56500 <- kegg_56500[!is.na(kegg_56500$p.adjust) & kegg_56500$p.adjust < 0.05, ]
 kegg_68605 <- as.data.frame(gsea_68605$kegg)
-if (nrow(kegg_56500) > 0 & nrow(kegg_68605) > 0) {
-  shared_kegg <- intersect(
-    kegg_56500$Description,
-    kegg_68605$Description)
-  cat("\nShared KEGG pathways (both datasets):",
-      length(shared_kegg), "\n")
-  if (length(shared_kegg) > 0) {
-    cat("Shared KEGG pathways replicated across spinal cord and motor cortex:\n")
-    print(shared_kegg)
-    write.csv(
-      data.frame(Pathway = shared_kegg),
-      file.path(DIR_TABLES, "GSEA_shared_KEGG_pathways.csv"),
-      row.names = FALSE)} else {
-     cat("No shared KEGG pathways — tissue-specific enrichment patterns\n")
-    }}
+kegg_68605 <- kegg_68605[!is.na(kegg_68605$p.adjust) & kegg_68605$p.adjust < 0.05, ]
+shared_kegg <- intersect(kegg_56500$Description, kegg_68605$Description)
+cat("\nShared KEGG pathways (both datasets):",
+    length(shared_kegg), "\n")
+if (length(shared_kegg) > 0) {
+  cat("Shared KEGG pathways replicated across spinal cord and motor cortex:\n")
+  print(shared_kegg)
+} else {
+  cat("No shared KEGG pathways — tissue-specific enrichment patterns\n")
+}
+write.csv(
+  data.frame(Pathway = shared_kegg),
+  file.path(DIR_TABLES, "GSEA_shared_KEGG_pathways.csv"),
+  row.names = FALSE)
