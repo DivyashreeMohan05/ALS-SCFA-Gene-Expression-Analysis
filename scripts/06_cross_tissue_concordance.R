@@ -33,6 +33,14 @@ sp_sig <- cor.test(merged_sig$logFC_56500, merged_sig$logFC_68605, method = "spe
 cat("Spearman rho (significant in either, n =", nrow(merged_sig), "):", sp_sig$estimate,
     "| p:", sp_sig$p.value, "\n")
 
+#Concordance stats - the numbers behind the plot subtitle, as a table
+concordance_stats <- data.frame(
+  metric = c("universe_n", "rho_all_genes", "perm_p_all_genes",
+             "n_significant_either", "rho_significant_either", "p_significant_either"),
+  value  = c(length(universe), sp$estimate, emp_p,
+             nrow(merged_sig), sp_sig$estimate, sp_sig$p.value))
+write.csv(concordance_stats, file.path(DIR_TABLES, "cross_tissue_concordance_stats.csv"), row.names = FALSE)
+
 #Concordance scatter plot
 merged$Overlap3 <- merged$GeneSymbol %in% overlap_3$GeneSymbol
 p_concordance <- ggplot(merged, aes(x = logFC_56500, y = logFC_68605)) +
