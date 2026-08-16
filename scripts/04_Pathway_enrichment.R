@@ -137,14 +137,16 @@ save_null_dotplot <- function(cons, title, filename, top_n = 20) {
   ggsave(file.path(DIR_FIGURES, filename), plot = p, width = 12, height = 8, dpi = 300, bg = "white")
   return(p)}
 #GSEA analysis: GSE56500
+top_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_all.csv"))
+ranked_56500 <- make_ranked_list(top_56500)
+ranked_56500_entrez <- symbol_to_entrez(ranked_56500)
+cat("Genes mapped to Entrez (GSE56500):", length(ranked_56500_entrez), "\n")
+update_preprocessing_summary("GSE56500",
+  genes_input = length(ranked_56500), genes_mapped_entrez = length(ranked_56500_entrez))
 if (USE_CACHE) {
   cat("Consensus CSVs match current logic - skipping the 20-seed sweep for GSE56500\n")
   gsea_56500 <- load_consensus("GSE56500")
 } else {
-  top_56500 <- read.csv(file.path(DIR_TABLES, "ALS_vs_Control_all.csv"))
-  ranked_56500 <- make_ranked_list(top_56500)
-  ranked_56500_entrez <- symbol_to_entrez(ranked_56500)
-  cat("Genes mapped to Entrez (GSE56500):", length(ranked_56500_entrez), "\n")
   gsea_56500 <- run_gsea(ranked_56500_entrez, "GSE56500")
 }
 save_consensus_dotplot(
@@ -156,14 +158,16 @@ save_consensus_dotplot(
   "GSEA GO BP consensus - ALS vs Control (GSE56500)",
   "GSEA_GOBP_dotplot_GSE56500.png", top_n = 20)
 #GSEA analysis: GSE68605
+top_68605 <- read.csv(file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_all.csv"))
+ranked_68605 <- make_ranked_list(top_68605)
+ranked_68605_entrez <- symbol_to_entrez(ranked_68605)
+cat("Genes mapped to Entrez (GSE68605):", length(ranked_68605_entrez), "\n")
+update_preprocessing_summary("GSE68605",
+  genes_input = length(ranked_68605), genes_mapped_entrez = length(ranked_68605_entrez))
 if (USE_CACHE) {
   cat("Consensus CSVs match current logic - skipping the 20-seed sweep for GSE68605\n")
   gsea_68605 <- load_consensus("GSE68605")
 } else {
-  top_68605 <- read.csv(file.path(DIR_TABLES, "GSE68605_ALS_vs_Control_all.csv"))
-  ranked_68605 <- make_ranked_list(top_68605)
-  ranked_68605_entrez <- symbol_to_entrez(ranked_68605)
-  cat("Genes mapped to Entrez (GSE68605):", length(ranked_68605_entrez), "\n")
   gsea_68605 <- run_gsea(ranked_68605_entrez, "GSE68605")
 }
 save_null_dotplot(

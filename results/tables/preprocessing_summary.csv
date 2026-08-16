@@ -1,0 +1,3 @@
+"accession","gpl","platform","n_als","n_control","probes_total","probes_dropped_no_symbol","probes_dropped_multimapped","probes_retained","genes_after_collapse","genes_input","genes_mapped_entrez"
+"GSE56500","GPL5188","Affymetrix Human Exon 1.0 ST",6,6,232479,4791,3401,224287,17404,17404,14503
+"GSE68605","GPL570","Affymetrix HG-U133 Plus 2.0",8,3,54675,8893,2619,43163,21815,21815,17849

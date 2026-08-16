@@ -40,3 +40,21 @@ scfa_genes <- list(
 all_scfa      <- unlist(scfa_genes, use.names = FALSE)
 gene_category <- rep(names(scfa_genes), lengths(scfa_genes))
 names(gene_category) <- all_scfa
+
+#Write or update one row of preprocessing_summary.csv, keyed by accession
+update_preprocessing_summary <- function(accession, ...) {
+  file <- file.path(DIR_TABLES, "preprocessing_summary.csv")
+  new_vals <- list(...)
+  tab <- if (file.exists(file)) {
+    read.csv(file, stringsAsFactors = FALSE)
+  } else {
+    data.frame(accession = character(0), stringsAsFactors = FALSE)
+  }
+  i <- if (accession %in% tab$accession) which(tab$accession == accession) else nrow(tab) + 1
+  tab[i, "accession"] <- accession
+  for (col in names(new_vals)) {
+    if (!col %in% names(tab)) tab[[col]] <- NA
+    tab[i, col] <- new_vals[[col]]
+  }
+  write.csv(tab, file, row.names = FALSE)
+}

@@ -7,11 +7,14 @@ library(ggplot2)
 library(ggrepel)
 source(here::here("scripts", "_paths.R"))
 source(here::here("scripts", "_fetch_geo.R"))
+source(here::here("scripts", "_helpers.R"))
 # Loading GEO dataset
 gse       <- getGEO("GSE56500", GSEMatrix = TRUE, destdir = DIR_RAW)[[1]]
+gpl       <- annotation(gse)
 expr_mat  <- exprs(gse) #expression matrix of probes × samples
 pheno     <- pData(gse)
 fdata     <- fData(gse) #feature annotation
+probes_total <- nrow(fdata)
 #Creating a ALS/Control label
 pheno$ALS_status <- ifelse(pheno$`patient group:ch1` == "control", "Control", "ALS")
 #Probe to gene symbol mapping - /// separated, keep symbol only if unambiguous
@@ -30,6 +33,20 @@ extract_gene <- function(x) {
   }
   resolve_symbol(fields2)
 }
+#Diagnostic classification only - mirrors extract_gene, doesn't feed the pipeline
+classify_probe <- function(x) {
+  if (is.na(x)) return("no_symbol")
+  blocks <- strsplit(x, " /// ")[[1]]
+  fields2 <- character(0)
+  for (b in blocks) {
+    f <- strsplit(b, " // ")[[1]]
+    if (length(f) >= 2) fields2 <- c(fields2, trimws(f[2]))
+  }
+  symbols <- unique(fields2[!is.na(fields2) & fields2 != ""])
+  if (length(symbols) == 0) "no_symbol" else if (length(symbols) == 1) "resolved" else "multimapped"
+}
+probe_class <- table(factor(sapply(fdata$gene_assignment, classify_probe),
+                             levels = c("no_symbol", "resolved", "multimapped")))
 fdata$GeneSymbol  <- sapply(fdata$gene_assignment, extract_gene)
 valid             <- !is.na(fdata$GeneSymbol)
 expr_mat          <- expr_mat[valid,]
@@ -43,6 +60,13 @@ expr_mat   <- expr_mat[keep, ]
 fdata      <- fdata[keep, ]
 rownames(expr_mat) <- fdata$GeneSymbol
 cat("Probes:", length(iqr_vals), "-> Genes retained after collapse:", nrow(expr_mat), "\n")
+update_preprocessing_summary("GSE56500",
+  gpl = gpl, platform = "Affymetrix Human Exon 1.0 ST",
+  n_als = sum(pheno$ALS_status == "ALS"), n_control = sum(pheno$ALS_status == "Control"),
+  probes_total = probes_total,
+  probes_dropped_no_symbol = unname(probe_class["no_symbol"]),
+  probes_dropped_multimapped = unname(probe_class["multimapped"]),
+  probes_retained = length(iqr_vals), genes_after_collapse = nrow(expr_mat))
 # Inspecting for non-standard names
 suspicious <- grep("^[0-9]|\\.|^-", rownames(expr_mat), value = TRUE)
 if (length(suspicious) > 0) {

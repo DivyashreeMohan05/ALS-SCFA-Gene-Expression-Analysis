@@ -12,9 +12,11 @@ source(here::here("scripts", "_fetch_geo.R"))
 source(here::here("scripts", "_helpers.R"))
 #Loading GEO dataset
 gse      <- getGEO("GSE68605", GSEMatrix = TRUE, destdir = DIR_RAW)[[1]]
+gpl      <- annotation(gse)
 expr_mat <- exprs(gse)
 pheno    <- pData(gse)
 fdata    <- fData(gse)
+probes_total <- nrow(fdata)
 #Assign ALS/Control labels
 colnames(pheno)
 print(table(pheno$`patient group:ch1`))
@@ -30,6 +32,15 @@ resolve_symbol <- function(symbols) {
   if (length(symbols) == 1) return(symbols)
   NA
 }
+#Diagnostic classification only - mirrors the resolve_symbol call below, doesn't feed the pipeline
+classify_probe <- function(x) {
+  if (is.na(x) || x == "") return("no_symbol")
+  symbols <- unique(trimws(strsplit(x, " /// ")[[1]]))
+  symbols <- symbols[symbols != ""]
+  if (length(symbols) == 0) "no_symbol" else if (length(symbols) == 1) "resolved" else "multimapped"
+}
+probe_class <- table(factor(sapply(as.character(fdata$`Gene Symbol`), classify_probe),
+                             levels = c("no_symbol", "resolved", "multimapped")))
 fdata$GeneSymbol <- sapply(as.character(fdata$`Gene Symbol`), function(x) {
   if (is.na(x) || x == "") return(NA)
   resolve_symbol(trimws(strsplit(x, " /// ")[[1]]))
@@ -45,6 +56,13 @@ expr_mat           <- expr_mat[keep, ]
 fdata              <- fdata[keep, ]
 rownames(expr_mat) <- fdata$GeneSymbol
 cat("Probes:", length(iqr_vals), "-> Genes retained after collapse:", nrow(expr_mat), "\n")
+update_preprocessing_summary("GSE68605",
+  gpl = gpl, platform = "Affymetrix HG-U133 Plus 2.0",
+  n_als = sum(pheno$ALS_status == "ALS"), n_control = sum(pheno$ALS_status == "Control"),
+  probes_total = probes_total,
+  probes_dropped_no_symbol = unname(probe_class["no_symbol"]),
+  probes_dropped_multimapped = unname(probe_class["multimapped"]),
+  probes_retained = length(iqr_vals), genes_after_collapse = nrow(expr_mat))
 #DEG using limma
 group            <- factor(pheno$ALS_status, levels = c("Control", "ALS"))
 design           <- model.matrix(~0 + group)
