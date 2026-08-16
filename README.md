@@ -70,8 +70,9 @@ Rebuilding it to run end to end turned up five errors:
 
 1. **Gene name parsing.** The old code decided whether a string was a gene symbol
    by checking it against a list of accession prefixes. That list was incomplete,
-   so entries like `BC001082 // RP11-529I10.4` were kept as gene names. Valid
-   Entrez mappings in GSE56500 went from 2,807 to 14,503.
+   so entries like `BC001082 // RP11-529I10.4` were kept as gene names. Only a
+   small fraction of gene symbols mapped to a valid Entrez ID; after the fix,
+   14,503 of 17,404 do.
 2. **Probes matching several genes** were assigned to the first one that passed
    the filter, instead of being dropped as ambiguous.
 3. **Pathway significance.** `gseKEGG()` filters its output on the raw p-value,
